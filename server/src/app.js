@@ -12,7 +12,7 @@ const jobsRouter = require('./routes/api/jobs');
 const profileRouter = require('./routes/api/profile');
 
 mongoose
-  .connect('mongodb+srv://arjcrs:CJWeBLqmzlnAaUBh@arjcrs.vfpvp3w.mongodb.net/')
+  .connect('mongodb+srv://arjcrs:CJWeBLqmzlnAaUBh@arjcrs.vfpvp3w.mongodb.net/hrmsDB')
   .then(() => console.log('Connected to DB!'))
   .catch(error => console.log(error));
 const app = express();
