@@ -15,6 +15,8 @@ class API {
       headers: { 'Auth-Token': localStorage.getItem('token') },
     });
 
+    
+
   getCompany = id =>
     axios.get(`/api/companies/${id}`, {
       headers: { 'Auth-Token': localStorage.getItem('token') },
