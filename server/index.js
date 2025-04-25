@@ -6,8 +6,11 @@ const cors = require('cors');
 require('dotenv').config();
 
 // Import routers
-const authRouter = require('./routes/api/auth');
-
+const authRouter = require('./src/routes/api/auth');
+const companiesRouter = require('./src/routes/api/companies');
+const studentsRouter = require('./src/routes/api/students');
+const jobsRouter = require('./src/routes/api/jobs');
+const profileRouter = require('./src/routes/api/profile');
 
 // Connect to MongoDB
 mongoose
@@ -17,16 +20,22 @@ mongoose
 
 // Create Express app
 const app = express();
-const appUrl = 'https://hrms-five-xi.vercel.app';
 const PORT = 5000;
 const HOST = 'localhost';
 
 // Middleware
 app.use(helmet());
 app.use(logger('dev'));
+const appUrl = 'https://hrms-five-xi.vercel.app';
+
 app.use(cors({
-  origin: [appUrl],
-  methods: ['POST', 'GET', 'PUT'],
+  origin: appUrl,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'OPTIONS']
+}));
+
+app.options('*', cors({
+  origin: appUrl,
   credentials: true
 }));
 app.use(express.json());
