@@ -16,7 +16,7 @@ mongoose
   .then(() => console.log('Connected to DB!'))
   .catch(error => console.log(error));
 const app = express();
-const appUrl = 'https://hrms-five-xi.vercel.app/'
+const appUrl = 'https://hrms-five-xi.vercel.app'
 
 app.use(helmet());
 app.use(logger('dev'));
