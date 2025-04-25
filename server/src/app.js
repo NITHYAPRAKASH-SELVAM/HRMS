@@ -22,9 +22,8 @@ app.use(helmet());
 app.use(logger('dev'));
 app.use(cors(
   {
-    origin: [appUrl],
+    origin: ["*"],
     methods: ["POST", "GET","PUT"],
-    credentials: true
 }
 ));
 app.use(express.json());
