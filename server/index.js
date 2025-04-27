@@ -1,9 +1,9 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const helmet = require('helmet');
 const logger = require('morgan');
 const cors = require('cors');
-require('dotenv').config();
 
 // Import routers
 const authRouter = require('./src/routes/api/auth');
@@ -14,30 +14,39 @@ const profileRouter = require('./src/routes/api/profile');
 
 // Connect to MongoDB
 mongoose
-  .connect('mongodb+srv://arjcrs:CJWeBLqmzlnAaUBh@arjcrs.vfpvp3w.mongodb.net/hrmsDB')
+  .connect(process.env.MONGO_URI)
   .then(() => console.log('✅ Connected to DB!'))
   .catch(error => console.error('❌ DB Connection Error:', error));
 
 // Create Express app
 const app = express();
-const PORT = 5000;
-const HOST = 'localhost';
+const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || 'localhost';
 
 // Middleware
 app.use(helmet());
 app.use(logger('dev'));
-const appUrl = 'https://hrms-five-xi.vercel.app';
+
+// CORS
+const allowedOrigins = [
+  'http://localhost:3000',  // local frontend
+  process.env.FRONTEND_URL  // deployed frontend
+];
 
 app.use(cors({
-  origin: appUrl,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'OPTIONS']
-}));
-
-app.options('*', cors({
-  origin: appUrl,
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
+
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

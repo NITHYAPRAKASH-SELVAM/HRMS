@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const Admin = require('./src/models/Admin'); // Assuming your model is defined in this file
 
 // Connect to MongoDB Atlas
-mongoose.connect('mongodb+srv://arjcrs:CJWeBLqmzlnAaUBh@arjcrs.vfpvp3w.mongodb.net/', {
+mongoose.connect('mongodb+srv://arjcrs:CJWeBLqmzlnAaUBh@arjcrs.vfpvp3w.mongodb.net/hrmsDB', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })

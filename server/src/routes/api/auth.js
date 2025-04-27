@@ -11,6 +11,7 @@ const { ADMIN, COMPANY, STUDENT } = require('../../constants/roles');
 const { validateSignUp, validateLogIn } = require('../../validation');
 
 router.post('/signup/:role', async (req, res) => {
+  console.log('req.body', req.body);
   const { role } = req.params;
   const { firstName, lastName, email, password } = req.body;
 
@@ -55,6 +56,7 @@ router.post('/signup/:role', async (req, res) => {
       email: email,
       password: hash,
     });
+    console.log('error', error);
 
     const token = jwt.sign({ _id: student._id, role }, process.env.JWT_SECRET);
 
@@ -71,14 +73,17 @@ router.post('/signup/:role', async (req, res) => {
 });
 
 router.post('/login/:role', async (req, res) => {
+  console.log('req.body', req.body);
   const { role } = req.params;
   const { email, password } = req.body;
 
   const { error } = validateLogIn(req.body);
+  console.log('error', error);
   if (error) return res.status(400).send({ message: error.message });
 
   if (role === ADMIN) {
     const user = await Admin.findOne({ email });
+    console.log('error', error);
 
     if (!user)
       return res.status(400).send({
