@@ -50,9 +50,11 @@ router.post('/signup/:role', async (req, res) => {
       })
       .catch(error => res.status(400).send({ message: error.message }));
   } else if (role === STUDENT) {
+    // Combine firstName and lastName to create the name field
+    const name = `${firstName} ${lastName}`;
+
     const student = new Student({
-      firstName,
-      lastName,
+      name,  // Using the combined name field
       email: email,
       password: hash,
     });

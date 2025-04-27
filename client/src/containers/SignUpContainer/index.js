@@ -59,6 +59,7 @@ class SignUpContainer extends Component {
       );
   };
 
+
   dismissAlert = () => this.setState({ error: null });
 
   render() {
