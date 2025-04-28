@@ -185,7 +185,7 @@ Edit.propTypes = {
   lastName: PropTypes.string.isRequired,
   phone: PropTypes.string.isRequired,
   objective: PropTypes.string,
-  skills: PropTypes.array,
+  skills: PropTypes.arrayOf(PropTypes.string),
   certifications: PropTypes.array,
   experience: PropTypes.array,
   education: PropTypes.array,
