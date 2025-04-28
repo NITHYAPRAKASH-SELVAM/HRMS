@@ -339,12 +339,12 @@ Profile.propTypes = {
   lastName: PropTypes.string,
   phone: PropTypes.string,
   objective: PropTypes.string,
-  skills: PropTypes.array,
-  experience: PropTypes.array,
+  skills: PropTypes.arrayOf(PropTypes.string),
+  experience:PropTypes.arrayOf(PropTypes.string),
   education: PropTypes.array,
   certifications: PropTypes.array,
   projects: PropTypes.array,
-  references: PropTypes.array,
+  references: PropTypes.array
 };
 
 export default Profile;
