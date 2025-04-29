@@ -44,15 +44,6 @@ const StudentSchema = new mongoose.Schema({
     },
   ],
 
-  // Existing fields
-  registrationNumber: String,
-  dob: String,
-  department: String,
-  section: String,
-  branch: String,
-  gender: String,
-  studentMobileNumber: String,
-  address: String,
   password: { type: String, required: true },
   role: { type: String, default: STUDENT },
   createdAt: { type: Date, default: Date.now },

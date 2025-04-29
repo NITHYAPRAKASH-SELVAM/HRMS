@@ -41,6 +41,7 @@ class EditContainer extends Component {
   };
 
   handleSubmit = e => {
+     if (e && typeof e.preventDefault === 'function') {
     e.preventDefault();
     this.setState({ isProcessing: true });
 
@@ -82,6 +83,7 @@ class EditContainer extends Component {
           error: error?.response?.data?.message || 'Update failed.',
         })
       );
+    }
   };
 
   dismissAlert = () => this.setState({ error: null });
@@ -108,8 +110,8 @@ class EditContainer extends Component {
         lastName={lastName}
         phone={phone}
         objective={objective}
-        skills={skills}
-        certifications={certifications}
+        skills={skills.split(',').map(skill => skill.trim()).filter(Boolean)}
+        certifications={certifications.split(',').map(cert => cert.trim()).filter(Boolean)}
         experience={safeParseArray(experience)}
         education={safeParseArray(education)}
         projects={safeParseArray(projects)}
