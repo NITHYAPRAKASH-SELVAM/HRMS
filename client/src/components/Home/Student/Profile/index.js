@@ -35,7 +35,6 @@ const Profile = ({
     references,
   });
 
-  // View More states
   const [showAllSkills, setShowAllSkills] = useState(false);
   const [showAllExperience, setShowAllExperience] = useState(false);
   const [showAllEducation, setShowAllEducation] = useState(false);
@@ -45,18 +44,25 @@ const Profile = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleListChange = (e, listName, index) => {
     const { name, value } = e.target;
     const updatedList = [...formData[listName]];
+
     if (listName === "skills" || listName === "certifications") {
-      updatedList[index] = value; // Simple string arrays
+      updatedList[index] = value;
+    } else if (name === "technologies") {
+      updatedList[index] = { ...updatedList[index], [name]: value.split(',').map(item => item.trim()) };
     } else {
-      updatedList[index] = { ...updatedList[index], [name]: value }; // Object arrays
+      updatedList[index] = { ...updatedList[index], [name]: value };
     }
-    setFormData({ ...formData, [listName]: updatedList });
+    setFormData((prev) => ({ ...prev, [listName]: updatedList }));
+  };
+
+  const handleSave = () => {
+    navigate(ROUTES.PROFILE_EDIT, { state: { formData } });
   };
 
   return (
@@ -101,14 +107,13 @@ const Profile = ({
               />
             </Form.Group>
 
-            {/* Skills with View More */}
+            {/* Skills */}
             <Form.Group className="mb-3">
               <Form.Label>Skills</Form.Label>
               <ListGroup>
                 {(showAllSkills ? formData.skills : formData.skills?.slice(0, 3))?.map((skill, index) => (
                   <ListGroup.Item key={index}>
                     <Form.Control
-                      name="skill"
                       value={skill}
                       onChange={(e) => handleListChange(e, 'skills', index)}
                     />
@@ -117,14 +122,14 @@ const Profile = ({
               </ListGroup>
               {formData.skills?.length > 3 && (
                 <div className="text-center mt-2">
-                  <Button variant="link" onClick={() => setShowAllSkills(!showAllSkills)} style={{ textDecoration: 'none' }}>
+                  <Button variant="link" className="text-decoration-none" onClick={() => setShowAllSkills(!showAllSkills)}>
                     {showAllSkills ? 'View Less' : 'View More'}
                   </Button>
                 </div>
               )}
             </Form.Group>
 
-            {/* Experience with View More */}
+            {/* Experience */}
             <Form.Group className="mb-3">
               <Form.Label>Experience</Form.Label>
               {(showAllExperience ? formData.experience : formData.experience?.slice(0, 2))?.map((exp, index) => (
@@ -135,24 +140,28 @@ const Profile = ({
                       value={exp.title}
                       onChange={(e) => handleListChange(e, 'experience', index)}
                       placeholder="Title"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="company"
                       value={exp.company}
                       onChange={(e) => handleListChange(e, 'experience', index)}
                       placeholder="Company"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="from"
                       value={exp.from}
                       onChange={(e) => handleListChange(e, 'experience', index)}
                       placeholder="From"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="to"
                       value={exp.to}
                       onChange={(e) => handleListChange(e, 'experience', index)}
                       placeholder="To"
+                      className="mb-2"
                     />
                     <Form.Control
                       as="textarea"
@@ -167,14 +176,14 @@ const Profile = ({
               ))}
               {formData.experience?.length > 2 && (
                 <div className="text-center mt-2">
-                  <Button variant="link" onClick={() => setShowAllExperience(!showAllExperience)} style={{ textDecoration: 'none' }}>
+                  <Button variant="link" className="text-decoration-none" onClick={() => setShowAllExperience(!showAllExperience)}>
                     {showAllExperience ? 'View Less' : 'View More'}
                   </Button>
                 </div>
               )}
             </Form.Group>
 
-            {/* Education with View More */}
+            {/* Education */}
             <Form.Group className="mb-3">
               <Form.Label>Education</Form.Label>
               {(showAllEducation ? formData.education : formData.education?.slice(0, 2))?.map((edu, index) => (
@@ -185,18 +194,21 @@ const Profile = ({
                       value={edu.degree}
                       onChange={(e) => handleListChange(e, 'education', index)}
                       placeholder="Degree"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="institution"
                       value={edu.institution}
                       onChange={(e) => handleListChange(e, 'education', index)}
                       placeholder="Institution"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="year"
                       value={edu.year}
                       onChange={(e) => handleListChange(e, 'education', index)}
                       placeholder="Year"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="grade"
@@ -209,21 +221,20 @@ const Profile = ({
               ))}
               {formData.education?.length > 2 && (
                 <div className="text-center mt-2">
-                  <Button variant="link" onClick={() => setShowAllEducation(!showAllEducation)} style={{ textDecoration: 'none' }}>
+                  <Button variant="link" className="text-decoration-none" onClick={() => setShowAllEducation(!showAllEducation)}>
                     {showAllEducation ? 'View Less' : 'View More'}
                   </Button>
                 </div>
               )}
             </Form.Group>
 
-            {/* Certifications with View More */}
+            {/* Certifications */}
             <Form.Group className="mb-3">
               <Form.Label>Certifications</Form.Label>
               <ListGroup>
                 {(showAllCertifications ? formData.certifications : formData.certifications?.slice(0, 3))?.map((cert, index) => (
                   <ListGroup.Item key={index}>
                     <Form.Control
-                      name="certification"
                       value={cert}
                       onChange={(e) => handleListChange(e, 'certifications', index)}
                     />
@@ -232,14 +243,14 @@ const Profile = ({
               </ListGroup>
               {formData.certifications?.length > 3 && (
                 <div className="text-center mt-2">
-                  <Button variant="link" onClick={() => setShowAllCertifications(!showAllCertifications)} style={{ textDecoration: 'none' }}>
+                  <Button variant="link" className="text-decoration-none" onClick={() => setShowAllCertifications(!showAllCertifications)}>
                     {showAllCertifications ? 'View Less' : 'View More'}
                   </Button>
                 </div>
               )}
             </Form.Group>
 
-            {/* Projects with View More */}
+            {/* Projects */}
             <Form.Group className="mb-3">
               <Form.Label>Projects</Form.Label>
               {(showAllProjects ? formData.projects : formData.projects?.slice(0, 2))?.map((project, index) => (
@@ -250,18 +261,21 @@ const Profile = ({
                       value={project.title}
                       onChange={(e) => handleListChange(e, 'projects', index)}
                       placeholder="Project Title"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="description"
                       value={project.description}
                       onChange={(e) => handleListChange(e, 'projects', index)}
                       placeholder="Description"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="technologies"
                       value={project.technologies?.join(', ')}
                       onChange={(e) => handleListChange(e, 'projects', index)}
                       placeholder="Technologies (comma separated)"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="link"
@@ -274,14 +288,14 @@ const Profile = ({
               ))}
               {formData.projects?.length > 2 && (
                 <div className="text-center mt-2">
-                  <Button variant="link" onClick={() => setShowAllProjects(!showAllProjects)} style={{ textDecoration: 'none' }}>
+                  <Button variant="link" className="text-decoration-none" onClick={() => setShowAllProjects(!showAllProjects)}>
                     {showAllProjects ? 'View Less' : 'View More'}
                   </Button>
                 </div>
               )}
             </Form.Group>
 
-            {/* References with View More */}
+            {/* References */}
             <Form.Group className="mb-3">
               <Form.Label>References</Form.Label>
               <ListGroup>
@@ -292,18 +306,21 @@ const Profile = ({
                       value={ref.name}
                       onChange={(e) => handleListChange(e, 'references', index)}
                       placeholder="Name"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="position"
                       value={ref.position}
                       onChange={(e) => handleListChange(e, 'references', index)}
                       placeholder="Position"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="company"
                       value={ref.company}
                       onChange={(e) => handleListChange(e, 'references', index)}
                       placeholder="Company"
+                      className="mb-2"
                     />
                     <Form.Control
                       name="contact"
@@ -316,7 +333,7 @@ const Profile = ({
               </ListGroup>
               {formData.references?.length > 2 && (
                 <div className="text-center mt-2">
-                  <Button variant="link" onClick={() => setShowAllReferences(!showAllReferences)} style={{ textDecoration: 'none' }}>
+                  <Button variant="link" className="text-decoration-none" onClick={() => setShowAllReferences(!showAllReferences)}>
                     {showAllReferences ? 'View Less' : 'View More'}
                   </Button>
                 </div>
@@ -324,9 +341,11 @@ const Profile = ({
             </Form.Group>
 
             {/* Save Button */}
-            <Button variant="success" onClick={() => navigate(ROUTES.PROFILE_EDIT)}>
-              Save
-            </Button>
+            <div className="text-center">
+              <Button variant="success" onClick={handleSave}>
+                Save
+              </Button>
+            </div>
           </Form>
         </Card.Body>
       </Card>
@@ -340,11 +359,11 @@ Profile.propTypes = {
   phone: PropTypes.string,
   objective: PropTypes.string,
   skills: PropTypes.arrayOf(PropTypes.string),
-  experience:PropTypes.arrayOf(PropTypes.string),
-  education: PropTypes.array,
-  certifications: PropTypes.array,
-  projects: PropTypes.array,
-  references: PropTypes.array
+  experience: PropTypes.arrayOf(PropTypes.object),
+  education: PropTypes.arrayOf(PropTypes.object),
+  certifications: PropTypes.arrayOf(PropTypes.string),
+  projects: PropTypes.arrayOf(PropTypes.object),
+  references: PropTypes.arrayOf(PropTypes.object),
 };
 
 export default Profile;

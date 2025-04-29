@@ -48,12 +48,12 @@ router.patch('/', authorization, (req, res) => {
           lastName,
           phone,
           objective,
-          skills, // Assuming this is an array of strings
-          certifications, // Assuming this is an array of strings
-          education, // Array of education objects
-          experience, // Array of experience objects
-          projects, // Array of project objects
-          references, // Array of reference objects
+          skills, 
+          certifications, 
+          education, 
+          experience, 
+          projects,  
+          references, 
         },
       }
     )

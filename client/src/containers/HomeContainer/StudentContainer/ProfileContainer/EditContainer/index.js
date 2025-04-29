@@ -8,6 +8,15 @@ import * as ROUTES from '../../../../../constants/routes';
 
 import Edit from '../../../../../components/Home/Student/Profile/Edit';
 
+function safeParseArray(str) {
+  try {
+    const parsed = JSON.parse(str);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 class EditContainer extends Component {
   state = {
     firstName: this.props.user.firstName || '',
@@ -16,6 +25,13 @@ class EditContainer extends Component {
     objective: this.props.user.objective || '',
     skills: (this.props.user.skills || []).join(', '),
     certifications: (this.props.user.certifications || []).join(', '),
+
+    // NEW fields for full resume editing
+    experience: JSON.stringify(this.props.user.experience || [], null, 2),
+    education: JSON.stringify(this.props.user.education || [], null, 2),
+    projects: JSON.stringify(this.props.user.projects || [], null, 2),
+    references: JSON.stringify(this.props.user.references || [], null, 2),
+
     isProcessing: false,
     error: null,
   };
@@ -29,9 +45,9 @@ class EditContainer extends Component {
     this.setState({ isProcessing: true });
 
     const { api, setUser, navigate } = this.props;
-    const { firstName, lastName, phone, objective, skills, certifications } = this.state;
+    const { firstName, lastName, phone, objective, skills, certifications, experience, education, projects, references } = this.state;
 
-    const data = {
+    let data = {
       firstName,
       lastName,
       phone,
@@ -39,6 +55,21 @@ class EditContainer extends Component {
       skills: skills.split(',').map(skill => skill.trim()).filter(Boolean),
       certifications: certifications.split(',').map(cert => cert.trim()).filter(Boolean),
     };
+
+    try {
+      data = {
+        ...data,
+        experience: JSON.parse(experience),
+        education: JSON.parse(education),
+        projects: JSON.parse(projects),
+        references: JSON.parse(references),
+      };
+    } catch (err) {
+      return this.setState({
+        isProcessing: false,
+        error: 'Invalid JSON format in Experience, Education, Projects, or References.',
+      });
+    }
 
     api
       .updateProfile(data)
@@ -63,6 +94,10 @@ class EditContainer extends Component {
       objective,
       skills,
       certifications,
+      experience,
+      education,
+      projects,
+      references,
       isProcessing,
       error,
     } = this.state;
@@ -75,6 +110,10 @@ class EditContainer extends Component {
         objective={objective}
         skills={skills}
         certifications={certifications}
+        experience={safeParseArray(experience)}
+        education={safeParseArray(education)}
+        projects={safeParseArray(projects)}
+        references={safeParseArray(references)}
         handleChange={this.handleChange}
         handleSubmit={this.handleSubmit}
         isProcessing={isProcessing}
@@ -82,12 +121,13 @@ class EditContainer extends Component {
         dismissAlert={this.dismissAlert}
       />
     );
+    
   }
 }
 
-const mapStateToProps = state => {
-  return { user: state.user };
-};
+const mapStateToProps = state => ({
+  user: state.user,
+});
 
 export default compose(
   connect(mapStateToProps, { setUser }),

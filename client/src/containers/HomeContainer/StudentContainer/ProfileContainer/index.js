@@ -1,32 +1,37 @@
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
-
+import React from 'react';
+import { useSelector } from 'react-redux';
 import Profile from '../../../../components/Home/Student/Profile';
 
-class ProfileContainer extends Component {
-  state = {
-    firstName: this.props.user.firstName,
-    lastName: this.props.user.lastName,
-    phone: this.props.user.phone,
+const ProfileContainer = () => {
+  const user = useSelector((state) => state.user || {});
 
-    // Resume-style fields
-    objective: this.props.user.objective,
-    skills: this.props.user.skills,
-    experience: this.props.user.experience,
-    education: this.props.user.education,
-    certifications: this.props.user.certifications,
-    projects: this.props.user.projects,
-    references: this.props.user.references,
-  };
+  const {
+    firstName = '',
+    lastName = '',
+    phone = '',
+    objective = '',
+    skills = [],
+    experience = [],
+    education = [],
+    certifications = [],
+    projects = [],
+    references = [],
+  } = user;
 
-  render() {
-    return <Profile {...this.state} />;
-  }
-}
+  return (
+    <Profile
+      firstName={firstName}
+      lastName={lastName}
+      phone={phone}
+      objective={objective}
+      skills={skills}
+      experience={experience}
+      education={education}
+      certifications={certifications}
+      projects={projects}
+      references={references}
+    />
+  );
+};
 
-const mapStateToProps = (state) => ({
-  user: state.user,
-});
-
-export default connect(mapStateToProps)(ProfileContainer);
-
+export default ProfileContainer;
