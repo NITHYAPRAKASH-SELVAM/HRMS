@@ -8,7 +8,10 @@ const Student = require('../../models/Student');
 
 const { ADMIN, COMPANY, STUDENT } = require('../../constants/roles');
 
-router.patch('/', authorization, (req, res) => {
+router.patch('/', authorization, (req, res) => {  
+  console.log('User Info:', req.user);
+  console.log('Received Body:', req.body);
+
   const { _id, role } = req.user;
   const {
     firstName,
@@ -59,6 +62,27 @@ router.patch('/', authorization, (req, res) => {
     )
       .then(success => res.status(200).send(success.nModified))
       .catch(error => res.status(400).send({ message: error.message }));
+});
+router.get('/', authorization, async (req, res) => {
+  const { _id, role } = req.user;
+
+  try {
+    let user;
+
+    if (role === 'admin') {
+      user = await Admin.findById(_id).select('-password');
+    } else if (role === 'company') {
+      user = await Company.findById(_id).select('-password');
+    } else if (role === 'student') {
+      user = await Student.findById(_id).select('-password');
+    }
+
+    if (!user) return res.status(404).send({ message: 'User not found.' });
+
+    res.status(200).send(user);
+  } catch (error) {
+    res.status(500).send({ message: error.message });
+  }
 });
 
 

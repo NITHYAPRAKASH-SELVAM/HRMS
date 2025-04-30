@@ -66,7 +66,14 @@ const Edit = ({
 
   const onSubmit = (e) => {
     e.preventDefault();
+      // Check for missing required fields
+  if (!formData.firstName || !formData.lastName || !formData.phone) {
+    alert("Please fill in all required fields.");
+    return;
+  }
     handleSubmit(formData);
+    console.log('Submitting data:', formData);
+
   };
 
   return (

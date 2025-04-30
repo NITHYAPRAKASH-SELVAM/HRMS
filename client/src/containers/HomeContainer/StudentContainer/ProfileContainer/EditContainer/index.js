@@ -47,7 +47,19 @@ class EditContainer extends Component {
 
     const { api, setUser, navigate } = this.props;
     const { firstName, lastName, phone, objective, skills, certifications, experience, education, projects, references } = this.state;
-
+    // Log the current state
+    console.log("Submitting data:", {
+      firstName,
+      lastName,
+      phone,
+      objective,
+      skills,
+      certifications,
+      experience,
+      education,
+      projects,
+      references
+    });
     let data = {
       firstName,
       lastName,

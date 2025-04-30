@@ -55,7 +55,8 @@ app.use('/api/user', authRouter);
 app.use('/api/companies', companiesRouter);
 app.use('/api/students', studentsRouter);
 app.use('/api/jobs', jobsRouter);
-app.use('/api/profile', profileRouter);
+app.use('/api/profile', require('./routes/api/profile'));
+
 
 // Welcome route
 app.get('/', (req, res) => {
