@@ -12,26 +12,43 @@ class JobsContainer extends Component {
 
   getJobs = () => {
     const { api } = this.props;
-
+  
     api
       .getJobs()
       .then(response => {
         const { data } = response;
-
-        data.forEach(job => {
+  
+        const jobPromises = data.map(async job => {
           const ids = job.applicants;
-          const promises = ids.map(id => api.getProfileById(id));
-
-          Promise.all(promises)
-            .then(data => (job.applicants = data.map(profile => profile.data)))
-            .catch(error => console.log(error.response.data.message));
+  
+          const profilePromises = ids.map(applicantId => {
+            const id = typeof applicantId === 'object' ? applicantId._id : applicantId;
+            return api.getProfileById(id).then(res => res.data);
+          });
+  
+          try {
+            const applicants = await Promise.all(profilePromises);
+            job.applicants = applicants;
+          } catch (err) {
+            console.error('Error fetching applicants:', err.message);
+          }
+  
+          return job;
         });
-
-        this.setState({ jobs: data });
+  
+        Promise.all(jobPromises)
+          .then(jobsWithApplicants => {
+            this.setState({ jobs: jobsWithApplicants });
+          })
+          .catch(error => {
+            console.error('Error processing jobs:', error.message);
+          });
       })
-      .catch(error => console.log(error.response.data.message));
+      .catch(error => {
+        console.log(error.response?.data?.message || error.message);
+      });
   };
-
+  
   handleDelete = e => {
     const { api } = this.props;
     const id = e.target.dataset.id;

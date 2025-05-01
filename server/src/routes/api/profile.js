@@ -84,6 +84,28 @@ router.get('/', authorization, async (req, res) => {
     res.status(500).send({ message: error.message });
   }
 });
+// Get a profile by ID (used for viewing applicants)
+router.get('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    let user;
+
+    // Try to find the user in all possible roles
+    user = await Student.findById(id).select('-password');
+    if (user) return res.status(200).send(user);
+
+    user = await Company.findById(id).select('-password');
+    if (user) return res.status(200).send(user);
+
+    user = await Admin.findById(id).select('-password');
+    if (user) return res.status(200).send(user);
+
+    return res.status(404).send({ message: 'Profile not found' });
+  } catch (error) {
+    return res.status(500).send({ message: error.message });
+  }
+});
 
 
 module.exports = router;

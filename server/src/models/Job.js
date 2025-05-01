@@ -13,10 +13,12 @@ const JobSchema = mongoose.Schema({
     type: String,
     required: true,
   },
-  applicants: {
-    type: Array,
-    default: [],
-  },
+  applicants: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Students', // or 'Students' if you used that model name
+    },
+  ],
   createdAt: {
     type: Date,
     default: Date,
