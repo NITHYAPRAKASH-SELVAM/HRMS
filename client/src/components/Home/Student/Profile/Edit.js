@@ -333,8 +333,12 @@ const Edit = ({
               <Button variant="primary" onClick={() => addListItem('references', { name: '', position: '', company: '', contact: '' })} disabled={isProcessing}>Add Reference</Button>
             </Form.Group>
 
-            {/* Submit / Cancel */}
-            <Button variant="success" type="submit" disabled={isProcessing} className="me-2">
+            <Button
+              className="me-2"
+              variant="success"
+              type="submit"
+              disabled={isProcessing}
+            >
               {isProcessing ? 'Updating...' : 'Update'}
             </Button>
             <Button
