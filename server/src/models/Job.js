@@ -15,13 +15,17 @@ const JobSchema = mongoose.Schema({
   },
   applicants: [
     {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Students', // or 'Students' if you used that model name
-    },
+      studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Students' },
+      status: {
+        type: String,
+        enum: ['pending', 'accept', 'reject'],  
+        default: 'pending',
+      },
+    }
   ],
   createdAt: {
     type: Date,
-    default: Date,
+    default: Date.now,
   },
 });
 

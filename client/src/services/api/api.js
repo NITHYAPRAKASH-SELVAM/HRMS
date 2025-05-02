@@ -6,16 +6,15 @@ class API {
     axios.defaults.headers.post['Content-Type'] = 'application/json';
   }
 
+  // Auth
   signUp = (role, data) => axios.post(`/api/user/signup/${role}`, data);
-
   logIn = (role, data) => axios.post(`/api/user/login/${role}`, data);
 
+  // Companies
   getCompanies = () =>
     axios.get('/api/companies', {
       headers: { 'Auth-Token': localStorage.getItem('token') },
     });
-
-
 
   getCompany = id =>
     axios.get(`/api/companies/${id}`, {
@@ -27,6 +26,7 @@ class API {
       headers: { 'Auth-Token': localStorage.getItem('token') },
     });
 
+  // Students
   getStudents = () =>
     axios.get('/api/students', {
       headers: { 'Auth-Token': localStorage.getItem('token') },
@@ -42,6 +42,7 @@ class API {
       headers: { 'Auth-Token': localStorage.getItem('token') },
     });
 
+  // Jobs
   getJobs = () =>
     axios.get('/api/jobs', {
       headers: { 'Auth-Token': localStorage.getItem('token') },
@@ -62,11 +63,21 @@ class API {
       headers: { 'Auth-Token': localStorage.getItem('token') },
     });
 
+  updateApplicantStatus = (jobId, studentId, status) =>
+    axios.patch(
+      `/api/jobs/${jobId}/status`,
+      { studentId, status },
+      {
+        headers: { 'Auth-Token': localStorage.getItem('token') },
+      }
+    );
+
   deleteJob = id =>
     axios.delete(`/api/jobs/${id}`, {
       headers: { 'Auth-Token': localStorage.getItem('token') },
     });
 
+  // Profile
   getProfile = () =>
     axios.get('/api/profile', {
       headers: { 'Auth-Token': localStorage.getItem('token') },

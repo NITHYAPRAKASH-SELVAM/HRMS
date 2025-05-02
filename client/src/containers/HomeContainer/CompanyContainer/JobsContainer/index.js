@@ -1,10 +1,16 @@
 import React, { Component } from 'react';
 import { withAPI } from '../../../../services/api';
+import { withRouter } from '../../../../utils/withRouter'; // optional helper if you're using React Router v6 and class components
 
 import Jobs from '../../../../components/Home/Company/Jobs';
 
 class JobsContainer extends Component {
-  state = { jobs: [], isProcessing: false, selectedJobId: '' };
+  state = {
+    jobs: [],
+    isProcessing: false,
+    selectedJobId: '',
+    filterStatus: 'all',
+  };
 
   componentDidMount() {
     this.getJobs();
@@ -12,43 +18,41 @@ class JobsContainer extends Component {
 
   getJobs = () => {
     const { api } = this.props;
-  
+
     api
       .getJobs()
-      .then(response => {
+      .then(async response => {
         const { data } = response;
-  
+
         const jobPromises = data.map(async job => {
-          const ids = job.applicants;
-  
-          const profilePromises = ids.map(applicantId => {
-            const id = typeof applicantId === 'object' ? applicantId._id : applicantId;
-            return api.getProfileById(id).then(res => res.data);
+          const applicants = job.applicants;
+
+          const profilePromises = applicants.map(async applicant => {
+            try {
+              const res = await api.getProfileById(applicant.studentId);
+              return {
+                ...res.data,
+                status: applicant.status,
+                studentId: applicant.studentId,
+              };
+            } catch (err) {
+              console.error('Error fetching applicant:', err.message);
+              return null;
+            }
           });
-  
-          try {
-            const applicants = await Promise.all(profilePromises);
-            job.applicants = applicants;
-          } catch (err) {
-            console.error('Error fetching applicants:', err.message);
-          }
-  
-          return job;
+
+          const populatedApplicants = (await Promise.all(profilePromises)).filter(Boolean);
+          return { ...job, applicants: populatedApplicants };
         });
-  
-        Promise.all(jobPromises)
-          .then(jobsWithApplicants => {
-            this.setState({ jobs: jobsWithApplicants });
-          })
-          .catch(error => {
-            console.error('Error processing jobs:', error.message);
-          });
+
+        const jobsWithApplicants = await Promise.all(jobPromises);
+        this.setState({ jobs: jobsWithApplicants });
       })
       .catch(error => {
-        console.log(error.response?.data?.message || error.message);
+        console.error('Error fetching jobs:', error.message);
       });
   };
-  
+
   handleDelete = e => {
     const { api } = this.props;
     const id = e.target.dataset.id;
@@ -58,11 +62,31 @@ class JobsContainer extends Component {
     api
       .deleteJob(id)
       .then(() => this.getJobs())
-      .catch(error => console.log(error.response.data.message));
+      .catch(error => console.log(error.response?.data?.message))
+      .finally(() => this.setState({ isProcessing: false }));
+  };
+
+  handleStatusUpdate = (jobId, studentId, status) => {
+    const { api } = this.props;
+
+    api
+      .updateApplicantStatus(jobId, studentId, status)
+      .then(() => this.getJobs())
+      .catch(error => {
+        console.error('Error updating status:', error.message);
+      });
+  };
+
+  handleViewProfile = (studentId) => {
+    this.props.navigate(`/profile/${studentId}`);
+  };
+
+  handleStatusFilterChange = (status) => {
+    this.setState({ filterStatus: status });
   };
 
   render() {
-    const { jobs, isProcessing, selectedJobId } = this.state;
+    const { jobs, isProcessing, selectedJobId, filterStatus } = this.state;
 
     return (
       <Jobs
@@ -70,9 +94,13 @@ class JobsContainer extends Component {
         handleDelete={this.handleDelete}
         isProcessing={isProcessing}
         selectedJobId={selectedJobId}
+        filterStatus={filterStatus}
+        handleStatusFilterChange={this.handleStatusFilterChange}
+        handleStatusUpdate={this.handleStatusUpdate}
+        handleViewProfile={this.handleViewProfile}
       />
     );
   }
 }
 
-export default withAPI(JobsContainer);
+export default withRouter(withAPI(JobsContainer));
