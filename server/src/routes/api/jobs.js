@@ -66,15 +66,20 @@ router.patch('/:id/apply', authorization, async (req, res) => {
 
     if (!job) return res.status(404).send({ message: 'Job not found.' });
 
-    const alreadyApplied = job.applicants.some(app => app.studentId.toString() === studentId);
+    const alreadyApplied = job.applicants.some(app =>
+      app.studentId.toString() === studentId
+    );
 
     if (alreadyApplied) {
       return res.status(400).send({ message: 'Already applied to this job.' });
     }
 
-    job.applicants.push({ studentId, status: 'pending' });
-    await job.save();
+    job.applicants.push({
+      studentId: mongoose.Types.ObjectId(studentId),
+      status: 'pending',
+    });
 
+    await job.save();
     res.status(200).send({ message: 'Applied successfully.' });
   } catch (error) {
     res.status(400).send({ message: error.message });

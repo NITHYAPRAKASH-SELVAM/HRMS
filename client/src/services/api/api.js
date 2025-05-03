@@ -88,10 +88,14 @@ class API {
       headers: { 'Auth-Token': localStorage.getItem('token') },
     });
 
-  updateProfile = data =>
-    axios.patch(`/api/profile`, data, {
-      headers: { 'Auth-Token': localStorage.getItem('token') },
-    });
+  updateProfile = data => {
+    console.log('API call: PATCH /api/profile');
+    return axios.patch(`/api/profile`, data, {
+          headers: { 'Auth-Token': localStorage.getItem('token') },
+        });
+    }
 }
 
 export default API;
+
+

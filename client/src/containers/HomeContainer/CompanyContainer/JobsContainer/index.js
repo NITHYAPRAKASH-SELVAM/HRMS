@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { withAPI } from '../../../../services/api';
-import { withRouter } from '../../../../utils/withRouter'; // optional helper if you're using React Router v6 and class components
+import withRouter from '../../../../services/withRouter';
 
 import Jobs from '../../../../components/Home/Company/Jobs';
 
@@ -26,20 +26,36 @@ class JobsContainer extends Component {
 
         const jobPromises = data.map(async job => {
           const applicants = job.applicants;
+          console.log('Job applicants:', applicants);
+
 
           const profilePromises = applicants.map(async applicant => {
+            let { studentId } = applicant;
+          
+            // Defensive recovery if studentId is an object with numeric keys
+            if (typeof studentId === 'object' && studentId !== null) {
+              studentId = Object.values(studentId).join('');
+            }
+          
+            if (!studentId || typeof studentId !== 'string') {
+              console.warn('Missing or malformed studentId for applicant:', applicant);
+              return null;
+            }
+          
             try {
-              const res = await api.getProfileById(applicant.studentId);
+              const res = await api.getProfileById(studentId);
               return {
                 ...res.data,
                 status: applicant.status,
-                studentId: applicant.studentId,
+                studentId,
               };
             } catch (err) {
               console.error('Error fetching applicant:', err.message);
               return null;
             }
           });
+          
+          
 
           const populatedApplicants = (await Promise.all(profilePromises)).filter(Boolean);
           return { ...job, applicants: populatedApplicants };
