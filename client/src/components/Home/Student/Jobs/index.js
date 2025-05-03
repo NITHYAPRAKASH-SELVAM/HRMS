@@ -16,7 +16,7 @@ const Jobs = ({
   filterStatus,
   handleFilterChange,
 }) => {
-  const [appliedJobs, setAppliedJobs] = useState({}); // local cache for instant feedback
+  const [appliedJobs, setAppliedJobs] = useState({});
 
   useEffect(() => {
     const newAppliedJobs = {};
@@ -30,11 +30,12 @@ const Jobs = ({
   }, [jobs, _id]);
 
   const handleJobApply = (jobId) => {
+    // Update UI immediately
     setAppliedJobs(prev => ({
       ...prev,
       [jobId]: 'pending',
     }));
-    handleApply(jobId); // Backend API call
+    handleApply(jobId); // Backend call
   };
 
   const filteredJobs = jobs.filter((job) => {
@@ -74,7 +75,7 @@ const Jobs = ({
             </thead>
             <tbody>
               {filteredJobs.map((job, i) => {
-                const appliedStatus = appliedJobs[job._id];
+                const appliedStatus = appliedJobs[job._id]; // accept/reject/pending/undefined
                 const isSelected = isProcessing && job._id === selectedJobId;
 
                 return (

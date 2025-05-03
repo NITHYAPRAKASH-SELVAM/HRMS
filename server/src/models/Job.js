@@ -15,7 +15,7 @@ const JobSchema = mongoose.Schema({
   },
   applicants: [
     {
-      studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Students' },
+      studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Students', required: true },
       status: {
         type: String,
         enum: ['pending', 'accept', 'reject'],  

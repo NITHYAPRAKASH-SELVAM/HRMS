@@ -74,8 +74,9 @@ router.patch('/:id/apply', authorization, async (req, res) => {
     if (!job) return res.status(404).send({ message: 'Job not found.' });
 
     const alreadyApplied = job.applicants.some(app =>
-      app.studentId.toString() === studentId.toString()
+      app?.studentId?.toString() === studentId.toString()
     );
+    
 
     if (alreadyApplied) {
       return res.status(400).send({ message: 'Already applied to this job.' });
