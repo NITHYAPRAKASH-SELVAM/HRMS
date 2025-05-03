@@ -58,11 +58,11 @@ class API {
       headers: { 'Auth-Token': localStorage.getItem('token') },
     });
 
-  applyToJob = id =>
-    axios.patch(`/api/jobs/${id}/apply`, null, {
+  applyToJob = (id, data) =>
+    axios.patch(`/api/jobs/${id}/apply`, data, {
       headers: { 'Auth-Token': localStorage.getItem('token') },
     });
-
+    
   updateApplicantStatus = (jobId, studentId, status) =>
     axios.patch(
       `/api/jobs/${jobId}/status`,
@@ -90,12 +90,10 @@ class API {
 
   updateProfile = data => {
     console.log('API call: PATCH /api/profile');
-    return axios.patch(`/api/profile`, data, {
-          headers: { 'Auth-Token': localStorage.getItem('token') },
-        });
-    }
+    return axios.patch('/api/profile', data, {
+      headers: { 'Auth-Token': localStorage.getItem('token') },
+    });
+  };
 }
 
 export default API;
-
-

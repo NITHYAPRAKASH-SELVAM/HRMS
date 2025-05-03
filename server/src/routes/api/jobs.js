@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose'); // ✅ Needed for ObjectId conversion
 const authorization = require('../../middlewares/authorization');
 const Job = require('../../models/Job');
 const { STUDENT, COMPANY } = require('../../constants/roles');
 
-// Get all jobs for company or all jobs for others
+// ✅ GET all jobs
 router.get('/', authorization, async (req, res) => {
   const { _id, role } = req.user;
 
@@ -15,11 +16,12 @@ router.get('/', authorization, async (req, res) => {
 
     res.status(200).send(jobs);
   } catch (error) {
+    console.error('❌ Fetch Jobs Error:', error);
     res.status(400).send({ message: error.message });
   }
 });
 
-// Create a new job posting
+// ✅ POST: Create a new job (company only)
 router.post('/', authorization, async (req, res) => {
   const { _id, role } = req.user;
   const { title, description } = req.body;
@@ -33,11 +35,12 @@ router.post('/', authorization, async (req, res) => {
     const saved = await job.save();
     res.status(200).send(saved);
   } catch (error) {
+    console.error('❌ Create Job Error:', error);
     res.status(400).send({ message: error.message });
   }
 });
 
-// Get a single job with applicants' detailed info
+// ✅ GET: Single job with applicant details
 router.get('/:id', authorization, async (req, res) => {
   const { _id, role } = req.user;
 
@@ -47,13 +50,17 @@ router.get('/:id', authorization, async (req, res) => {
       : { _id: req.params.id };
 
     const job = await Job.findOne(query).populate('applicants.studentId');
+
+    if (!job) return res.status(404).send({ message: 'Job not found.' });
+
     res.status(200).send(job);
   } catch (error) {
+    console.error('❌ Get Job Error:', error);
     res.status(400).send({ message: error.message });
   }
 });
 
-// Apply for a job (only for students)
+// ✅ PATCH: Apply to a job (student only)
 router.patch('/:id/apply', authorization, async (req, res) => {
   const { _id: studentId, role } = req.user;
 
@@ -67,7 +74,7 @@ router.patch('/:id/apply', authorization, async (req, res) => {
     if (!job) return res.status(404).send({ message: 'Job not found.' });
 
     const alreadyApplied = job.applicants.some(app =>
-      app.studentId.toString() === studentId
+      app.studentId.toString() === studentId.toString()
     );
 
     if (alreadyApplied) {
@@ -75,33 +82,19 @@ router.patch('/:id/apply', authorization, async (req, res) => {
     }
 
     job.applicants.push({
-      studentId: mongoose.Types.ObjectId(studentId),
+      studentId: new mongoose.Types.ObjectId(studentId),
       status: 'pending',
     });
 
     await job.save();
     res.status(200).send({ message: 'Applied successfully.' });
   } catch (error) {
+    console.error('❌ Apply Error:', error);
     res.status(400).send({ message: error.message });
   }
 });
 
-// Delete a job (only for companies or admins)
-router.delete('/:id', authorization, async (req, res) => {
-  const { _id, role } = req.user;
-
-  try {
-    const deleteFilter = role === COMPANY
-      ? { _id: req.params.id, _companyId: _id }
-      : { _id: req.params.id };
-
-    const result = await Job.deleteOne(deleteFilter);
-    res.status(200).send(result.deletedCount.toString());
-  } catch (error) {
-    res.status(400).send({ message: error.message });
-  }
-});
-// Update applicant status (only for companies)
+// ✅ PATCH: Update applicant status (company only)
 router.patch('/:jobId/status', authorization, async (req, res) => {
   const { _id, role } = req.user;
   const { jobId } = req.params;
@@ -111,7 +104,6 @@ router.patch('/:jobId/status', authorization, async (req, res) => {
     return res.status(401).send({ message: 'Access denied.' });
   }
 
-  // Check if status is valid
   if (!['pending', 'accept', 'reject'].includes(status)) {
     return res.status(400).send({ message: 'Invalid status.' });
   }
@@ -123,9 +115,8 @@ router.patch('/:jobId/status', authorization, async (req, res) => {
       return res.status(404).send({ message: 'Job not found.' });
     }
 
-    // Find the applicant and update their status
     const applicant = job.applicants.find(
-      app => app.studentId.toString() === studentId
+      app => app.studentId.toString() === studentId.toString()
     );
 
     if (!applicant) {
@@ -134,10 +125,32 @@ router.patch('/:jobId/status', authorization, async (req, res) => {
 
     applicant.status = status;
 
-    // Save the updated job document
     await job.save();
     res.status(200).send({ message: 'Applicant status updated successfully.' });
   } catch (error) {
+    console.error('❌ Status Update Error:', error);
+    res.status(400).send({ message: error.message });
+  }
+});
+
+// ✅ DELETE: Remove job (company or admin)
+router.delete('/:id', authorization, async (req, res) => {
+  const { _id, role } = req.user;
+
+  try {
+    const deleteFilter = role === COMPANY
+      ? { _id: req.params.id, _companyId: _id }
+      : { _id: req.params.id };
+
+    const result = await Job.deleteOne(deleteFilter);
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({ message: 'Job not found or access denied.' });
+    }
+
+    res.status(200).send({ message: 'Job deleted successfully.' });
+  } catch (error) {
+    console.error('❌ Delete Job Error:', error);
     res.status(400).send({ message: error.message });
   }
 });
