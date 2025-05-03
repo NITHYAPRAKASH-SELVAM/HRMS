@@ -16,33 +16,31 @@ const Jobs = ({
   filterStatus,
   handleFilterChange,
 }) => {
-  const [jobList, setJobList] = useState(jobs);
+  const [appliedJobs, setAppliedJobs] = useState({}); // local cache for instant feedback
 
-  // Keep local jobList in sync with jobs prop
   useEffect(() => {
-    setJobList(jobs);
-  }, [jobs]);
-
-  // Handle applying to a job
-  const handleJobApply = (jobId) => {
-    const updatedJobs = jobList.map((job) => {
-      if (job._id === jobId) {
-        return {
-          ...job,
-          applicants: [...job.applicants, { studentId: _id, status: 'pending' }],
-        };
+    const newAppliedJobs = {};
+    jobs.forEach((job) => {
+      const applicant = job.applicants.find(app => app.studentId === _id);
+      if (applicant) {
+        newAppliedJobs[job._id] = applicant.status || 'pending';
       }
-      return job;
     });
-    setJobList(updatedJobs);
-    handleApply(jobId); // Call API
+    setAppliedJobs(newAppliedJobs);
+  }, [jobs, _id]);
+
+  const handleJobApply = (jobId) => {
+    setAppliedJobs(prev => ({
+      ...prev,
+      [jobId]: 'pending',
+    }));
+    handleApply(jobId); // Backend API call
   };
 
-  // Apply filtering based on status
-  const filteredJobs = jobList.filter((job) => {
+  const filteredJobs = jobs.filter((job) => {
     if (filterStatus === 'all') return true;
-    const applicant = job.applicants.find(app => app.studentId === _id);
-    return applicant?.status === filterStatus;
+    const status = appliedJobs[job._id];
+    return status === filterStatus;
   });
 
   return (
@@ -76,90 +74,29 @@ const Jobs = ({
             </thead>
             <tbody>
               {filteredJobs.map((job, i) => {
-                const hasApplied = job.applicants.some(app => app.studentId === _id);
-                const appliedApplicant = job.applicants.find(app => app.studentId === _id);
+                const appliedStatus = appliedJobs[job._id];
                 const isSelected = isProcessing && job._id === selectedJobId;
 
                 return (
-                  <React.Fragment key={job._id}>
-                    <tr>
-                      <td>{i + 1}</td>
-                      <td>{job.title}</td>
-                      <td>{job.description}</td>
-                      <td>
-                        {hasApplied
-                          ? <span className="text-capitalize">{appliedApplicant?.status || 'pending'}</span>
-                          : 'Not Applied'}
-                      </td>
-                      <td>
-                        {hasApplied ? (
-                          <Button variant="success" disabled>Applied</Button>
-                        ) : (
-                          <Button
-                            variant="primary"
-                            onClick={() => handleJobApply(job._id)}
-                            disabled={isSelected}
-                          >
-                            {isSelected ? 'Applying...' : 'Apply'}
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-
-                    {hasApplied && (
-                      <tr>
-                        <td colSpan={5}>
-                          <div className="mb-2">
-                            <strong>Status:</strong>{' '}
-                            <span className="text-capitalize">{appliedApplicant?.status || 'pending'}</span>
-                          </div>
-
-                          <Table size="sm" bordered hover>
-                            <thead>
-                              <tr>
-                                <th>No.</th>
-                                <th>First Name</th>
-                                <th>Last Name</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {job.applicants.map((app, idx) => (
-                                <tr key={idx}>
-                                  <td>{idx + 1}</td>
-                                  <td>{app.firstName || '-'}</td>
-                                  <td>{app.lastName || '-'}</td>
-                                  <td className="text-capitalize">{app.status}</td>
-                                  <td>
-                                    {app.status === 'pending' && (
-                                      <>
-                                        <Button
-                                          size="sm"
-                                          variant="success"
-                                          className="me-2"
-                                          onClick={() => handleStatusChange(job._id, app.studentId, 'accept')}
-                                        >
-                                          Accept
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="danger"
-                                          onClick={() => handleStatusChange(job._id, app.studentId, 'reject')}
-                                        >
-                                          Reject
-                                        </Button>
-                                      </>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </Table>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
+                  <tr key={job._id}>
+                    <td>{i + 1}</td>
+                    <td>{job.title}</td>
+                    <td>{job.description}</td>
+                    <td className="text-capitalize">{appliedStatus || 'Not Applied'}</td>
+                    <td>
+                      {appliedStatus ? (
+                        <Button variant="success" disabled>Applied</Button>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          onClick={() => handleJobApply(job._id)}
+                          disabled={isSelected}
+                        >
+                          {isSelected ? 'Applying...' : 'Apply'}
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>

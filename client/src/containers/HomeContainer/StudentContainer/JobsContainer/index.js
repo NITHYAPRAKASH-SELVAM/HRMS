@@ -13,81 +13,55 @@ class JobsContainer extends Component {
   };
 
   componentDidMount() {
-    this.getJobs();
+    this.fetchJobs();
   }
 
-  getJobs = () => {
-    const { api, _id } = this.props;
+  fetchJobs = () => {
+    const { api } = this.props;
 
     api
       .getJobs()
       .then((response) => {
-        const jobs = response.data;
-
-        // Enrich job data to check if student has applied and track their status
-        const jobsWithStatus = jobs.map(job => {
-          const applicant = job.applicants.find(a =>
-            typeof a === 'object'
-              ? (a.studentId === _id || a._id === _id)
-              : a === _id
-          );
-
-          return {
-            ...job,
-            applicantStatus: applicant?.status || null,
-            hasApplied: !!applicant,
-          };
-        });
-
-        this.setState({ jobs: jobsWithStatus });
+        this.setState({ jobs: response.data });
       })
-      .catch(error => {
-        console.log(error.response?.data?.message || error.message);
+      .catch((error) => {
+        console.error(error.response?.data?.message || error.message);
       });
   };
 
-  // ✅ Updated: jobId is passed directly (no DOM event)
   handleApply = (jobId) => {
     const { api, _id } = this.props;
 
     this.setState({ isProcessing: true, selectedJobId: jobId });
 
     api
-      .applyToJob(jobId, { studentId: _id }) // Make sure your backend uses req.body.studentId
-      .then(() => this.getJobs())
-      .catch(error => {
-        console.log(error.response?.data?.message || error.message);
+      .applyToJob(jobId, { studentId: _id }) // Assumes backend links student to job
+      .then(() => this.fetchJobs()) // Refresh job list after applying
+      .catch((error) => {
+        console.error(error.response?.data?.message || error.message);
       })
       .finally(() => {
         this.setState({ isProcessing: false, selectedJobId: '' });
       });
   };
 
-  handleFilterChange = status => {
+  handleFilterChange = (status) => {
     this.setState({ filterStatus: status });
   };
 
-  // Optional: placeholder since student won't manage status, but UI expects it
-  handleStatusChange = (jobId, studentId, newStatus) => {
-    console.log(`Student cannot change status: ${studentId}, ${newStatus}`);
-  };
+  // Student cannot change status, but required by component's propTypes
+  handleStatusChange = () => {};
 
   render() {
     const { _id } = this.props;
     const { jobs, isProcessing, selectedJobId, filterStatus } = this.state;
 
-    // ✅ Filter based on the student's own status on each job
-    const filteredJobs =
-      filterStatus === 'all'
-        ? jobs
-        : jobs.filter(job => job.applicantStatus === filterStatus);
-
     return (
       <Jobs
         _id={_id}
-        jobs={filteredJobs}
+        jobs={jobs} // full list, filtering is done inside component
         handleApply={this.handleApply}
-        handleStatusChange={this.handleStatusChange} // won't be used by student, but keeps propTypes happy
+        handleStatusChange={this.handleStatusChange}
         isProcessing={isProcessing}
         selectedJobId={selectedJobId}
         filterStatus={filterStatus}
@@ -97,8 +71,8 @@ class JobsContainer extends Component {
   }
 }
 
-const mapStateToProps = state => ({
-  _id: state.user._id, // Make sure _id of student is in Redux state
+const mapStateToProps = (state) => ({
+  _id: state.user._id,
 });
 
 export default compose(connect(mapStateToProps), withAPI)(JobsContainer);
