@@ -5,6 +5,9 @@ import Card from 'react-bootstrap/Card';
 import Table from 'react-bootstrap/Table';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
+import API from '../../services/api/api'; // 👈 Import your API instance
+
+const api = new API();
 
 const Jobs = ({
   _id,
@@ -16,34 +19,40 @@ const Jobs = ({
   filterStatus,
   handleFilterChange,
 }) => {
-  const [appliedJobs, setAppliedJobs] = useState({});
+  const [appliedJobs, setAppliedJobs] = useState({}); // { jobId: status }
 
-  // Extract student's application status from each job
+  // 🔄 Fetch applied jobs from backend once on mount
   useEffect(() => {
-    const newAppliedJobs = {};
-    jobs.forEach((job) => {
-      const applicant = job.applicants?.find(app => app.studentId === _id);
-      if (applicant) {
-        newAppliedJobs[job._id] = applicant.status || 'pending';
+    const fetchAppliedJobs = async () => {
+      try {
+        const res = await api.getAppliedJobs();
+        const jobStatusMap = {};
+        res.data.forEach(job => {
+          // All are pending initially unless status is added in job payload
+          const applicant = job.applicants?.find(app => app.studentId === _id);
+          jobStatusMap[job._id] = applicant?.status || 'pending';
+        });
+        setAppliedJobs(jobStatusMap);
+      } catch (err) {
+        console.error('Failed to fetch applied jobs:', err.message);
       }
-    });
-    setAppliedJobs(newAppliedJobs);
-  }, [jobs, _id]);
+    };
+
+    fetchAppliedJobs();
+  }, [_id]);
 
   const handleJobApply = (jobId) => {
-    // Update UI immediately to reflect pending status
-    setAppliedJobs((prev) => ({
+    setAppliedJobs(prev => ({
       ...prev,
       [jobId]: 'pending',
     }));
-    handleApply(jobId); // Trigger backend call
+    handleApply(jobId); // backend patch call
   };
 
-  // Filter jobs by status
+  // Filter jobs by selected status
   const filteredJobs = jobs.filter((job) => {
     if (filterStatus === 'all') return true;
-    const status = appliedJobs[job._id];
-    return status === filterStatus;
+    return appliedJobs[job._id] === filterStatus;
   });
 
   return (
@@ -78,7 +87,7 @@ const Jobs = ({
             <tbody>
               {filteredJobs.length > 0 ? (
                 filteredJobs.map((job, i) => {
-                  const appliedStatus = appliedJobs[job._id]; // may be undefined
+                  const appliedStatus = appliedJobs[job._id];
                   const isSelected = isProcessing && job._id === selectedJobId;
 
                   return (
@@ -86,7 +95,9 @@ const Jobs = ({
                       <td>{i + 1}</td>
                       <td>{job.title}</td>
                       <td>{job.description}</td>
-                      <td className="text-capitalize">{appliedStatus || 'Not Applied'}</td>
+                      <td className="text-capitalize">
+                        {appliedStatus || 'Not Applied'}
+                      </td>
                       <td>
                         {appliedStatus ? (
                           <Button variant="success" disabled>

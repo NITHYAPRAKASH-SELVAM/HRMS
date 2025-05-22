@@ -71,6 +71,12 @@ class API {
         headers: { 'Auth-Token': localStorage.getItem('token') },
       }
     );
+  getAppliedJobs = () =>
+    axios.get('/api/jobs/applied/me', {
+            headers: { 'Auth-Token': localStorage.getItem('token') },
+      }
+    );
+  
 
   deleteJob = id =>
     axios.delete(`/api/jobs/${id}`, {

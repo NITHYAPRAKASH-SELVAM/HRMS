@@ -5,18 +5,19 @@ const authorization = require('../../middlewares/authorization');
 const Job = require('../../models/Job');
 const { STUDENT, COMPANY } = require('../../constants/roles');
 
-// ✅ GET all jobs
-router.get('/', authorization, async (req, res) => {
+// 📌 GET: Jobs applied by the logged-in student
+router.get('/applied/me', authorization, async (req, res) => {
   const { _id, role } = req.user;
 
-  try {
-    const jobs = role === COMPANY
-      ? await Job.find({ _companyId: _id }).populate('applicants.studentId')
-      : await Job.find().populate('applicants.studentId');
+  if (role !== STUDENT) {
+    return res.status(401).send({ message: 'Access denied.' });
+  }
 
-    res.status(200).send(jobs);
+  try {
+    const appliedJobs = await Job.find({ 'applicants.studentId': _id }, '_id title description');
+    res.status(200).send(appliedJobs);
   } catch (error) {
-    console.error('❌ Fetch Jobs Error:', error);
+    console.error('❌ Fetch Applied Jobs Error:', error);
     res.status(400).send({ message: error.message });
   }
 });
