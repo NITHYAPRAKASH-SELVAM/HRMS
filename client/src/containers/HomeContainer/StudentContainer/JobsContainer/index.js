@@ -9,47 +9,43 @@ class JobsContainer extends Component {
     jobs: [],
     isProcessing: false,
     selectedJobId: '',
-    filterStatus: 'all', // all | pending | accept | reject
+    filterStatus: 'all', // Options: 'all', 'pending', 'accept', 'reject'
   };
 
   componentDidMount() {
     this.fetchJobs();
   }
 
-  fetchJobs = () => {
+  fetchJobs = async () => {
     const { api } = this.props;
-
-    api
-      .getJobs()
-      .then((response) => {
-        this.setState({ jobs: response.data });
-      })
-      .catch((error) => {
-        console.error(error.response?.data?.message || error.message);
-      });
+    try {
+      const response = await api.getJobs();
+      this.setState({ jobs: response.data });
+    } catch (error) {
+      console.error('Failed to fetch jobs:', error.response?.data?.message || error.message);
+    }
   };
 
-  handleApply = (jobId) => {
+  handleApply = async (jobId) => {
     const { api, _id } = this.props;
 
     this.setState({ isProcessing: true, selectedJobId: jobId });
 
-    api
-      .applyToJob(jobId, { studentId: _id }) // Assumes backend links student to job
-      .then(() => this.fetchJobs()) // Refresh job list after applying
-      .catch((error) => {
-        console.error(error.response?.data?.message || error.message);
-      })
-      .finally(() => {
-        this.setState({ isProcessing: false, selectedJobId: '' });
-      });
+    try {
+      await api.applyToJob(jobId, { studentId: _id });
+      await this.fetchJobs(); // Refresh after successful application
+    } catch (error) {
+      console.error('Job application failed:', error.response?.data?.message || error.message);
+    } finally {
+      this.setState({ isProcessing: false, selectedJobId: '' });
+    }
   };
 
   handleFilterChange = (status) => {
     this.setState({ filterStatus: status });
   };
 
-  // Student cannot change status, but required by component's propTypes
+  // No-op since students can't change statuses, but passed for propTypes compatibility
   handleStatusChange = () => {};
 
   render() {
@@ -59,7 +55,7 @@ class JobsContainer extends Component {
     return (
       <Jobs
         _id={_id}
-        jobs={jobs} // full list, filtering is done inside component
+        jobs={jobs}
         handleApply={this.handleApply}
         handleStatusChange={this.handleStatusChange}
         isProcessing={isProcessing}
@@ -75,4 +71,7 @@ const mapStateToProps = (state) => ({
   _id: state.user._id,
 });
 
-export default compose(connect(mapStateToProps), withAPI)(JobsContainer);
+export default compose(
+  connect(mapStateToProps),
+  withAPI
+)(JobsContainer);

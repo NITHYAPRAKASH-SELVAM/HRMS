@@ -18,10 +18,11 @@ const Jobs = ({
 }) => {
   const [appliedJobs, setAppliedJobs] = useState({});
 
+  // Extract student's application status from each job
   useEffect(() => {
     const newAppliedJobs = {};
     jobs.forEach((job) => {
-      const applicant = job.applicants.find(app => app.studentId === _id);
+      const applicant = job.applicants?.find(app => app.studentId === _id);
       if (applicant) {
         newAppliedJobs[job._id] = applicant.status || 'pending';
       }
@@ -30,14 +31,15 @@ const Jobs = ({
   }, [jobs, _id]);
 
   const handleJobApply = (jobId) => {
-    // Update UI immediately
-    setAppliedJobs(prev => ({
+    // Update UI immediately to reflect pending status
+    setAppliedJobs((prev) => ({
       ...prev,
       [jobId]: 'pending',
     }));
-    handleApply(jobId); // Backend call
+    handleApply(jobId); // Trigger backend call
   };
 
+  // Filter jobs by status
   const filteredJobs = jobs.filter((job) => {
     if (filterStatus === 'all') return true;
     const status = appliedJobs[job._id];
@@ -74,32 +76,40 @@ const Jobs = ({
               </tr>
             </thead>
             <tbody>
-              {filteredJobs.map((job, i) => {
-                const appliedStatus = appliedJobs[job._id]; // accept/reject/pending/undefined
-                const isSelected = isProcessing && job._id === selectedJobId;
+              {filteredJobs.length > 0 ? (
+                filteredJobs.map((job, i) => {
+                  const appliedStatus = appliedJobs[job._id]; // may be undefined
+                  const isSelected = isProcessing && job._id === selectedJobId;
 
-                return (
-                  <tr key={job._id}>
-                    <td>{i + 1}</td>
-                    <td>{job.title}</td>
-                    <td>{job.description}</td>
-                    <td className="text-capitalize">{appliedStatus || 'Not Applied'}</td>
-                    <td>
-                      {appliedStatus ? (
-                        <Button variant="success" disabled>Applied</Button>
-                      ) : (
-                        <Button
-                          variant="primary"
-                          onClick={() => handleJobApply(job._id)}
-                          disabled={isSelected}
-                        >
-                          {isSelected ? 'Applying...' : 'Apply'}
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                  return (
+                    <tr key={job._id}>
+                      <td>{i + 1}</td>
+                      <td>{job.title}</td>
+                      <td>{job.description}</td>
+                      <td className="text-capitalize">{appliedStatus || 'Not Applied'}</td>
+                      <td>
+                        {appliedStatus ? (
+                          <Button variant="success" disabled>
+                            {appliedStatus === 'pending' ? 'Applied' : appliedStatus.charAt(0).toUpperCase() + appliedStatus.slice(1)}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="primary"
+                            onClick={() => handleJobApply(job._id)}
+                            disabled={isSelected}
+                          >
+                            {isSelected ? 'Applying...' : 'Apply'}
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="5" className="text-center">No jobs found.</td>
+                </tr>
+              )}
             </tbody>
           </Table>
         </Card.Body>
