@@ -5,7 +5,7 @@ import Card from 'react-bootstrap/Card';
 import Table from 'react-bootstrap/Table';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
-import API from '../../services/api/api'; // 👈 Import your API instance
+import API from '../../../../services/api/api';
 
 const api = new API();
 

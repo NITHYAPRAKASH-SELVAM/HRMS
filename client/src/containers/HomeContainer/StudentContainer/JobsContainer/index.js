@@ -28,7 +28,7 @@ class JobsContainer extends Component {
 
   handleApply = async (jobId) => {
     const { api, _id } = this.props;
-
+    console.log('_id:', _id); // Log the _id prop
     this.setState({ isProcessing: true, selectedJobId: jobId });
 
     try {

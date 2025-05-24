@@ -21,6 +21,17 @@ router.get('/applied/me', authorization, async (req, res) => {
     res.status(400).send({ message: error.message });
   }
 });
+// GET: All jobs
+router.get('/', authorization, async (req, res) => {
+  try {
+    const jobs = await Job.find();
+    res.status(200).send(jobs);
+  } catch (error) {
+    console.error('❌ Fetch Jobs Error:', error);
+    res.status(400).send({ message: error.message });
+  }
+});
+
 
 // ✅ POST: Create a new job (company only)
 router.post('/', authorization, async (req, res) => {
