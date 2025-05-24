@@ -1,52 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import Container from 'react-bootstrap/Container';
 import Card from 'react-bootstrap/Card';
 import Table from 'react-bootstrap/Table';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
-import API from '../../../../services/api/api';
-
-const api = new API();
 
 const Jobs = ({
   _id,
   jobs,
+  appliedJobs,       // <-- now comes from props only
   handleApply,
-  handleStatusChange,
   isProcessing,
   selectedJobId,
   filterStatus,
   handleFilterChange,
 }) => {
-  const [appliedJobs, setAppliedJobs] = useState({}); // { jobId: status }
-
-  // 🔄 Fetch applied jobs from backend once on mount
-  useEffect(() => {
-    const fetchAppliedJobs = async () => {
-      try {
-        const res = await api.getAppliedJobs();
-        const jobStatusMap = {};
-        res.data.forEach(job => {
-          // All are pending initially unless status is added in job payload
-          const applicant = job.applicants?.find(app => app.studentId === _id);
-          jobStatusMap[job._id] = applicant?.status || 'pending';
-        });
-        setAppliedJobs(jobStatusMap);
-      } catch (err) {
-        console.error('Failed to fetch applied jobs:', err.message);
-      }
-    };
-
-    fetchAppliedJobs();
-  }, [_id]);
-
   const handleJobApply = (jobId) => {
-    setAppliedJobs(prev => ({
-      ...prev,
-      [jobId]: 'pending',
-    }));
-    handleApply(jobId); // backend patch call
+    if (!appliedJobs[jobId]) {
+      handleApply(jobId); // backend patch call handled in container
+    }
   };
 
   // Filter jobs by selected status
@@ -132,8 +105,8 @@ const Jobs = ({
 Jobs.propTypes = {
   _id: PropTypes.string.isRequired,
   jobs: PropTypes.array.isRequired,
+  appliedJobs: PropTypes.object.isRequired,        // must be passed from container
   handleApply: PropTypes.func.isRequired,
-  handleStatusChange: PropTypes.func.isRequired,
   isProcessing: PropTypes.bool.isRequired,
   selectedJobId: PropTypes.string.isRequired,
   filterStatus: PropTypes.string.isRequired,

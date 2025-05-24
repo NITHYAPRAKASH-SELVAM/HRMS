@@ -5,7 +5,7 @@ const authorization = require('../../middlewares/authorization');
 const Job = require('../../models/Job');
 const { STUDENT, COMPANY } = require('../../constants/roles');
 
-// 📌 GET: Jobs applied by the logged-in student
+// ✅ Updated: GET Jobs applied by the logged-in student (returns only student's own applicant info)
 router.get('/applied/me', authorization, async (req, res) => {
   const { _id, role } = req.user;
 
@@ -14,20 +14,29 @@ router.get('/applied/me', authorization, async (req, res) => {
   }
 
   try {
-    const appliedJobs = await Job.find({ 'applicants.studentId': _id }, '_id title description');
-    res.status(200).send(appliedJobs);
+    const appliedJobs = await Job.find(
+      { 'applicants.studentId': _id },
+      '_id title description applicants'
+    );
+
+    const filteredJobs = appliedJobs.map(job => {
+      const applicant = job.applicants.find(app =>
+        app?.studentId?.toString() === _id?.toString()
+      );
+
+      console.log('🔍 Matched applicant for job', job._id, ':', applicant); // ✅ Debug
+
+      return {
+        _id: job._id,
+        title: job.title,
+        description: job.description,
+        applicant, // only current student’s application
+      };
+    });
+
+    res.status(200).send(filteredJobs); // ✅ correct place for response
   } catch (error) {
     console.error('❌ Fetch Applied Jobs Error:', error);
-    res.status(400).send({ message: error.message });
-  }
-});
-// GET: All jobs
-router.get('/', authorization, async (req, res) => {
-  try {
-    const jobs = await Job.find();
-    res.status(200).send(jobs);
-  } catch (error) {
-    console.error('❌ Fetch Jobs Error:', error);
     res.status(400).send({ message: error.message });
   }
 });
@@ -164,6 +173,18 @@ router.delete('/:id', authorization, async (req, res) => {
     res.status(200).send({ message: 'Job deleted successfully.' });
   } catch (error) {
     console.error('❌ Delete Job Error:', error);
+    res.status(400).send({ message: error.message });
+  }
+});
+router.get('/', authorization, async (req, res) => {
+  const { _id, role } = req.user;
+
+  try {
+    const query = role === COMPANY ? { _companyId: _id } : {};
+    const jobs = await Job.find(query);
+    res.status(200).send(jobs);
+  } catch (error) {
+    console.error('❌ Fetch Jobs Error:', error);
     res.status(400).send({ message: error.message });
   }
 });

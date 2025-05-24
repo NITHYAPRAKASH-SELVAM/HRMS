@@ -7,13 +7,15 @@ import Jobs from '../../../../components/Home/Student/Jobs';
 class JobsContainer extends Component {
   state = {
     jobs: [],
+    appliedJobs: {}, // new: store jobId → status
     isProcessing: false,
     selectedJobId: '',
-    filterStatus: 'all', // Options: 'all', 'pending', 'accept', 'reject'
+    filterStatus: 'all',
   };
 
   componentDidMount() {
     this.fetchJobs();
+    this.fetchAppliedJobs();
   }
 
   fetchJobs = async () => {
@@ -26,14 +28,37 @@ class JobsContainer extends Component {
     }
   };
 
+  fetchAppliedJobs = async () => {
+  const { api, _id } = this.props;
+  try {
+    const response = await api.getAppliedJobs();
+
+    const jobStatusMap = {};
+    response.data.forEach(job => {
+      const applicant = job.applicant;
+
+      console.log('📦 Job ID:', job._id, 'Applicant:', applicant); // ✅ Debug
+
+      if (applicant && applicant.studentId?.toString() === _id?.toString()) {
+        jobStatusMap[job._id] = applicant.status || 'pending';
+      }
+    });
+
+    this.setState({ appliedJobs: jobStatusMap });
+  } catch (error) {
+    console.error('Failed to fetch applied jobs:', error.response?.data?.message || error.message);
+  }
+};
+
+
+
   handleApply = async (jobId) => {
     const { api, _id } = this.props;
-    console.log('_id:', _id); // Log the _id prop
     this.setState({ isProcessing: true, selectedJobId: jobId });
-
     try {
       await api.applyToJob(jobId, { studentId: _id });
-      await this.fetchJobs(); // Refresh after successful application
+      await this.fetchJobs();
+      await this.fetchAppliedJobs(); // refresh statuses here
     } catch (error) {
       console.error('Job application failed:', error.response?.data?.message || error.message);
     } finally {
@@ -45,19 +70,17 @@ class JobsContainer extends Component {
     this.setState({ filterStatus: status });
   };
 
-  // No-op since students can't change statuses, but passed for propTypes compatibility
-  handleStatusChange = () => {};
 
   render() {
     const { _id } = this.props;
-    const { jobs, isProcessing, selectedJobId, filterStatus } = this.state;
+    const { jobs, appliedJobs, isProcessing, selectedJobId, filterStatus } = this.state;
 
     return (
       <Jobs
         _id={_id}
         jobs={jobs}
+        appliedJobs={appliedJobs} // pass down statuses here
         handleApply={this.handleApply}
-        handleStatusChange={this.handleStatusChange}
         isProcessing={isProcessing}
         selectedJobId={selectedJobId}
         filterStatus={filterStatus}
