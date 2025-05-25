@@ -1,4 +1,3 @@
-import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import * as ROUTES from '../constants/routes';
 
@@ -12,6 +11,7 @@ import LogInType from '../components/LogInType/Lazy';
 import LogInContainer from '../containers/LogInContainer/Lazy';
 import HomeContainer from '../containers/HomeContainer/Lazy';
 import NotFound from '../components/NotFound/Lazy';
+import ViewStudentProfileContainer from '../containers/HomeContainer/CompanyContainer/ViewStudentProfileContainer/Lazy';
 
 const AppRoutes = () => {
   return (
@@ -51,6 +51,10 @@ const AppRoutes = () => {
       <Route
         path={`${ROUTES.HOME}/*`}
         element={<PrivateRoute component={HomeContainer} />}
+      />
+      <Route
+        path="/profile/:id"
+        element={<PrivateRoute component={ViewStudentProfileContainer} />}
       />
       <Route path="*" element={<NotFound />} />
     </Routes>

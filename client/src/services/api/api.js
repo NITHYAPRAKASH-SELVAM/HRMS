@@ -100,6 +100,7 @@ class API {
       headers: { 'Auth-Token': localStorage.getItem('token') },
     });
   };
+  getStudentById = this.getStudent;
 }
 
 export default API;
