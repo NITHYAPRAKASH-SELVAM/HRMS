@@ -1,5 +1,8 @@
 import pickle
 import xgboost as xgb
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ml.features import extract_features
 import numpy as np
 

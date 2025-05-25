@@ -3,7 +3,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 
-def load_vectorizer(path='ml/model_data/tfidf_vectorizer.pkl'):
+def load_vectorizer(path='server\src\ml\model_data\tfidf_vectorizer.pkl'):
     with open(path, 'rb') as f:
         return pickle.load(f)
 

@@ -3,9 +3,9 @@ const router = express.Router();
 const mongoose = require('mongoose'); // ✅ Needed for ObjectId conversion
 const authorization = require('../../middlewares/authorization');
 const Job = require('../../models/Job');
-// server/src/ml/index.js
-const { screenApplicant } = require('./screenwrapper'); // For single profile
-const { rankApplicants } = require('./rankwrapper');    // For batch ranking
+const { screenApplicant } = require('../../ml/screen_wrapper'); // Correct path to screen_wrapper.js
+const { rankApplicants } = require('../../ml/index');           // Correct path to index.js (where rankApplicants is exported)
+
 const { STUDENT, COMPANY } = require('../../constants/roles');
 
 // ✅ Updated: GET Jobs applied by the logged-in student (returns only student's own applicant info)

@@ -76,7 +76,11 @@ class API {
             headers: { 'Auth-Token': localStorage.getItem('token') },
       }
     );
-  
+    // AI Ranking
+  getRankedApplicants = (jobId) =>
+    axios.get(`/api/jobs/${jobId}/ranked-applicants`, {
+      headers: { 'Auth-Token': localStorage.getItem('token') },
+    });
 
   deleteJob = id =>
     axios.delete(`/api/jobs/${id}`, {
