@@ -7,8 +7,10 @@ from ml.features import extract_features
 import numpy as np
 
 def load_ltr_model():
-    with open('ml/model_data/ltr_model.pkl', 'rb') as f:
-        return pickle.load(f)  # this should be an XGBoost model saved with pickle
+    model_path = os.path.join(os.path.dirname(__file__), 'model_data', 'ltr_model.pkl')
+    with open(model_path, 'rb') as f:
+        return pickle.load(f)
+
 
 def rank_applicants(applicants, job_description):
     model = load_ltr_model()
