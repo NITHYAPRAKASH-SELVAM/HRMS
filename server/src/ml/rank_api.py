@@ -23,6 +23,7 @@ if __name__ == '__main__':
 
         validate_inputs(applicants, job_description)
         log_debug(f"✅ Loaded {len(applicants)} applicants")
+        log_debug(f"🔍 Job Description: {job_description[:80]}...")
 
         # Rank applicants
         start_rank = time.time()
