@@ -5,17 +5,22 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRanker
 import random
+import os
 
-# ---------- Mock Data (Replace with real dataset in production) ----------
+# ---------- Constants ----------
+MODEL_DIR = 'server/src/ml/model_data'
+EDU_MAP = {'bachelor': 0, 'master': 1, 'phd': 2}
+SKILL_LIST = ['python', 'react', 'node', 'ml', 'java']
+MAX_TFIDF_FEATURES = 100
+
+# ---------- Mock Data Generator ----------
 def generate_mock_profiles(n=50):
-    edu_levels = ['bachelor', 'master', 'phd']
-    skills_list = ['python', 'react', 'node', 'ml', 'java']
     profiles = []
     for _ in range(n):
         profile = {
             'experience_years': random.randint(0, 10),
-            'education_level': random.choice(edu_levels),
-            'skills': random.sample(skills_list, k=random.randint(1, 3)),
+            'education_level': random.choice(list(EDU_MAP.keys())),
+            'skills': random.sample(SKILL_LIST, k=random.randint(1, 3)),
             'summary': 'Experienced software developer.',
             'experiences': [{'description': 'Worked on backend systems.'}],
             'projects': [{'description': 'Built a recommendation engine.'}]
@@ -23,62 +28,78 @@ def generate_mock_profiles(n=50):
         profiles.append(profile)
     return profiles
 
+# ---------- Text Extraction ----------
 def extract_text(profile):
     return " ".join([
-        profile['summary'],
-        " ".join(profile['skills']),
-        " ".join(exp['description'] for exp in profile['experiences']),
-        " ".join(proj['description'] for proj in profile['projects'])
+        profile.get('summary', ''),
+        " ".join(profile.get('skills', [])),
+        " ".join(exp.get('description', '') for exp in profile.get('experiences', [])),
+        " ".join(proj.get('description', '') for proj in profile.get('projects', []))
     ])
 
-# ---------- TF-IDF Vectorizer ----------
-print("Fitting TF-IDF vectorizer...")
-mock_profiles = generate_mock_profiles()
-job_desc = "Looking for a backend engineer skilled in ML and Python."
-all_texts = [extract_text(p) for p in mock_profiles] + [job_desc]
-tfidf = TfidfVectorizer(max_features=100)
-tfidf.fit(all_texts)
+# ---------- Feature Extraction (6 features) ----------
+def extract_features(profile, job_description, tfidf):
+    exp_years = profile.get('experience_years', 0)
+    edu_level = EDU_MAP.get(profile.get('education_level', 'bachelor'), 0)
+    skills = profile.get('skills', [])
+    skill_match_count = len(set(skills).intersection(set(SKILL_LIST)))  # basic overlap count
 
-# ---------- Feature Extraction ----------
-edu_map = {'bachelor': 0, 'master': 1, 'phd': 2}
-def extract_features(profile, job_description):
-    experience = profile['experience_years']
-    edu = edu_map.get(profile['education_level'], 0)
     tf_job = tfidf.transform([job_description])
     tf_resume = tfidf.transform([extract_text(profile)])
     similarity = (tf_job @ tf_resume.T).A[0][0]
-    return np.array([experience, edu, similarity])
 
-X = np.array([extract_features(p, job_desc) for p in mock_profiles])
-y = np.array([1 if p['experience_years'] > 2 else 0 for p in mock_profiles])
+    total_projects = len(profile.get('projects', []))
+    total_experiences = len(profile.get('experiences', []))
 
-# ---------- Scale Features ----------
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+    return np.array([
+        exp_years,
+        edu_level,
+        skill_match_count,
+        similarity,
+        total_projects,
+        total_experiences
+    ])
 
-# ---------- Train Logistic Regression ----------
-print("Training Logistic Regression...")
-log_model = LogisticRegression()
-log_model.fit(X_scaled, y)
+# ---------- Main Training Script ----------
+def main():
+    print("🚀 Generating mock data...")
+    mock_profiles = generate_mock_profiles()
+    job_description = "Looking for a backend engineer skilled in ML and Python."
 
-# ---------- Train XGBoost Ranker ----------
-print("Training XGBoost Ranker...")
-rank_model = XGBRanker(objective='rank:pairwise', n_estimators=20)
-group = [len(X_scaled)]  # One group of all applicants
-rank_model.fit(X_scaled, y, group=group)
+    print("📊 Fitting TF-IDF vectorizer...")
+    texts = [extract_text(p) for p in mock_profiles] + [job_description]
+    tfidf = TfidfVectorizer(max_features=MAX_TFIDF_FEATURES)
+    tfidf.fit(texts)
 
-# ---------- Save Models ----------
-print("Saving models to ml/model_data...")
-with open('server/src/ml/model_data/tfidf_vectorizer.pkl', 'wb') as f:
-    pickle.dump(tfidf, f)
+    print("🔍 Extracting features...")
+    X = np.array([extract_features(p, job_description, tfidf) for p in mock_profiles])
+    y = np.array([1 if p['experience_years'] > 2 else 0 for p in mock_profiles])
 
-with open('server/src/ml/model_data/feature_scaler.pkl', 'wb') as f:
-    pickle.dump(scaler, f)
+    print("📏 Scaling features...")
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
 
-with open('server/src/ml/model_data/logistic_model.pkl', 'wb') as f:
-    pickle.dump(log_model, f)
+    print("🤖 Training Logistic Regression...")
+    log_model = LogisticRegression()
+    log_model.fit(X_scaled, y)
 
-with open('server/src/ml/model_data/ltr_model.pkl', 'wb') as f:
-    pickle.dump(rank_model, f)
+    print("📈 Training XGBoost Ranker...")
+    group = [len(X_scaled)]  # One group for all
+    rank_model = XGBRanker(objective='rank:pairwise', n_estimators=20)
+    rank_model.fit(X_scaled, y, group=group)
 
-print("✅ Training complete!")
+    print("💾 Saving models...")
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    with open(f'{MODEL_DIR}/tfidf_vectorizer.pkl', 'wb') as f:
+        pickle.dump(tfidf, f)
+    with open(f'{MODEL_DIR}/feature_scaler.pkl', 'wb') as f:
+        pickle.dump(scaler, f)
+    with open(f'{MODEL_DIR}/logistic_model.pkl', 'wb') as f:
+        pickle.dump(log_model, f)
+    with open(f'{MODEL_DIR}/ltr_model.pkl', 'wb') as f:
+        pickle.dump(rank_model, f)
+
+    print("✅ Training complete! Models saved to:", MODEL_DIR)
+
+if __name__ == '__main__':
+    main()

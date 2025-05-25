@@ -13,32 +13,40 @@ def load_vectorizer(path=None):
 
 def extract_features(profile, job_description, vectorizer=None):
     # Structured features
-    experience = profile.get('experience_years', 0)
+    experience = min(max(profile.get('experience_years', 0), 0), 50) / 50.0
+    education_level = profile.get('education_level', 'bachelor').lower()
+    edu_map = {'bachelor': 0, 'master': 1, 'phd': 2}
+    education_encoded = edu_map.get(education_level, 0)
+
     skills = profile.get('skills', [])
-    education_level = profile.get('education_level', 'bachelor')
-    
-    # Unstructured text from resume/profile
+    num_skills = len(skills)
+    num_projects = len(profile.get('projects', []))
+    num_certifications = len(profile.get('certifications', []))
+
+    # Resume text
     resume_text = " ".join([
         profile.get('summary', ''),
         " ".join(skills),
-        " ".join([exp['description'] for exp in profile.get('experiences', [])]),
-        " ".join([proj['description'] for proj in profile.get('projects', [])])
+        " ".join([exp.get('description', '') for exp in profile.get('experiences', []) if exp]),
+        " ".join([proj.get('description', '') for proj in profile.get('projects', []) if proj])
     ])
-    
-    # Load TF-IDF vectorizer if not provided
+    if not resume_text.strip():
+        resume_text = "N/A"
+
+    # TF-IDF similarity
     if vectorizer is None:
         vectorizer = load_vectorizer()
-    
-    # Vectorize job description and resume text
+
     tfidf_job = vectorizer.transform([job_description])
     tfidf_resume = vectorizer.transform([resume_text])
-    
-    # Compute cosine similarity between job and resume vectors
     text_similarity = cosine_similarity(tfidf_job, tfidf_resume)[0, 0]
-    
-    # One-hot encode education level (example mapping)
-    edu_map = {'bachelor': 0, 'master': 1, 'phd': 2}
-    education_encoded = edu_map.get(education_level.lower(), 0)
-    
-    # Return feature array
-    return np.array([experience, education_encoded, text_similarity])
+
+    return np.array([
+        experience,
+        education_encoded,
+        text_similarity,
+        num_skills,
+        num_projects,
+        num_certifications
+    ])
+

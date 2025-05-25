@@ -22,7 +22,7 @@ function rankApplicants(applicants, jobDescription) {
         isResolved = true;
         reject(new Error('Python ranking timed out'));
       }
-    }, 10000);
+    }, 30000);
 
     PythonShell.run('rank_api.py', options, function (err, results) {
       if (isResolved) return;  // Prevent multiple resolves
