@@ -191,57 +191,39 @@ router.get('/', authorization, async (req, res) => {
     res.status(400).send({ message: error.message });
   }
 });
+// This is correct
 router.get('/:id/ranked-applicants', authorization, async (req, res) => {
   const { _id, role } = req.user;
+
   try {
     const job = await Job.findById(req.params.id).populate('applicants.studentId');
-    if (!job) return res.status(404).json({ message: 'Job not found' });
+    if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+    if (role === COMPANY && job._companyId.toString() !== _id.toString())
+      return res.status(403).json({ success: false, message: 'Access denied' });
 
-    // Restrict to company that owns the job or admin
-    if (role === COMPANY && job._companyId.toString() !== _id.toString()) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    const jobDesc = job.description?.trim();
+    if (!jobDesc) return res.status(400).json({ success: false, message: 'Job description missing' });
 
-    const jobDesc = job.description;
-    const applicants = job.applicants?.map(a => a.studentId) || [];
-    console.log('Applicants count:', applicants.length);
-    console.log('Job description:', jobDesc);
+    const applicants = job.applicants
+      .filter(a => a.studentId)
+      .map(a => ({ student: a.studentId, status: a.status || 'pending', appliedAt: a.appliedAt || null }));
 
-    if (applicants.length === 0 || !jobDesc) {
-      return res.status(400).json({ message: 'Insufficient data to rank applicants' });
-    }
+    if (applicants.length === 0) return res.status(200).json({ success: true, data: [] });
 
-    const ranked = await rankApplicants(applicants, jobDesc);
-    res.json(ranked);
+    const rankedScores = await rankApplicants(applicants.map(a => a.student), jobDesc);
+
+    const rankedApplicants = rankedScores.map(({ applicant, score }) => {
+      const meta = applicants.find(a => a.student._id.toString() === applicant._id.toString());
+      return { applicant, score, status: meta?.status, appliedAt: meta?.appliedAt };
+    }).sort((a, b) => b.score - a.score);  // optional sort
+
+    res.status(200).json({ success: true, data: rankedApplicants });
+
   } catch (err) {
-    console.error('Ranking fetch failed:', err.message || err);
-    res.status(500).json({ message: 'Internal Server Error during ranking' });
+    console.error('❌ Ranking fetch failed:', err.message || err);
+    res.status(500).json({ success: false, message: 'Internal Server Error during ranking' });
   }
-  exports.rankApplicants = async (req, res) => {
-    try {
-      const jobId = req.params.id;
-      const job = await Job.findById(jobId).populate("applicants.applicantId");
-
-      console.log("📌 Job fetched:", job.title);
-      console.log("✅ Applicant count:", job.applicants.length);
-
-      if (!job || job.applicants.length === 0) {
-        return res.status(400).json({ message: "No applicants to rank." });
-      }
-
-      const applicants = job.applicants.map(app => app.applicantId);
-      console.log("✅ Applicants:", applicants.map(a => a._id.toString()));
-
-      // Continue with feature extraction and ML ranking...
-    } 
-    catch (error) {
-      console.error("❌ Error ranking applicants:", error);
-      res.status(500).json({ message: "Server error" });
-    }
-  };
-
 });
-
 
 
 module.exports = router;

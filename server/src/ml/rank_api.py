@@ -16,16 +16,18 @@ if __name__ == '__main__':
 
         # Format result
         output = [{'studentId': r[0]['_id'], 'score': float(r[1])} for r in result]
-        print(json.dumps(output))
+        
+        # Print JSON and flush output immediately to avoid buffering issues
+        print(json.dumps(output), flush=True)
 
     except IndexError:
-        print("Error: Missing input arguments", file=sys.stderr)
+        print("Error: Missing input arguments", file=sys.stderr, flush=True)
         sys.exit(1)
 
     except ValueError as ve:
-        print(f"ValueError: {ve}", file=sys.stderr)
+        print(f"ValueError: {ve}", file=sys.stderr, flush=True)
         sys.exit(1)
 
     except Exception as e:
-        print(f"Unhandled Exception: {e}", file=sys.stderr)
+        print(f"Unhandled Exception: {e}", file=sys.stderr, flush=True)
         sys.exit(1)
