@@ -1,12 +1,21 @@
 const jwt = require('jsonwebtoken');
 
 const authorization = (req, res, next) => {
-  const token = req.header('Auth-Token');
-  console.log('🛡️ Received token:', token);
+  // Try to get token from 'Authorization' header (Bearer token) or 'Auth-Token'
+  let token;
+
+  const authHeader = req.header('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7); // Remove 'Bearer ' prefix
+  } else {
+    token = req.header('Auth-Token');
+  }
+
+  console.log('🛡️ Received token:', token || 'No token found');
 
   if (!token) {
     console.warn('❌ No token provided');
-    return res.status(401).send({ message: 'Access denied. No token.' });
+    return res.status(401).json({ message: 'Access denied. No token provided.' });
   }
 
   try {
@@ -16,7 +25,7 @@ const authorization = (req, res, next) => {
     next();
   } catch (error) {
     console.error('❌ Invalid token:', error.message);
-    res.status(400).send({ message: 'Invalid token.' });
+    return res.status(401).json({ message: 'Invalid or expired token.' });
   }
 };
 

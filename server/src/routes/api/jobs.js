@@ -204,6 +204,8 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
 
     const jobDesc = job.description;
     const applicants = job.applicants?.map(a => a.studentId) || [];
+    console.log('Applicants count:', applicants.length);
+    console.log('Job description:', jobDesc);
 
     if (applicants.length === 0 || !jobDesc) {
       return res.status(400).json({ message: 'Insufficient data to rank applicants' });
@@ -215,7 +217,31 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
     console.error('Ranking fetch failed:', err.message || err);
     res.status(500).json({ message: 'Internal Server Error during ranking' });
   }
+  exports.rankApplicants = async (req, res) => {
+    try {
+      const jobId = req.params.id;
+      const job = await Job.findById(jobId).populate("applicants.applicantId");
+
+      console.log("📌 Job fetched:", job.title);
+      console.log("✅ Applicant count:", job.applicants.length);
+
+      if (!job || job.applicants.length === 0) {
+        return res.status(400).json({ message: "No applicants to rank." });
+      }
+
+      const applicants = job.applicants.map(app => app.applicantId);
+      console.log("✅ Applicants:", applicants.map(a => a._id.toString()));
+
+      // Continue with feature extraction and ML ranking...
+    } 
+    catch (error) {
+      console.error("❌ Error ranking applicants:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  };
+
 });
 
-s
+
+
 module.exports = router;

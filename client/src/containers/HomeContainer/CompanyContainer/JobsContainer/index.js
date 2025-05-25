@@ -24,54 +24,61 @@ class JobsContainer extends Component {
   };
 
   getJobsWithApplicantsAndScores = async () => {
-    const { api } = this.props;
+  const { api } = this.props;
 
-    try {
-      const { data: jobs } = await api.getJobs();
+  try {
+    const { data: jobs } = await api.getJobs();
 
-      const jobsWithApplicants = await Promise.all(
-        jobs.map(async (job) => {
-          const { _id: jobId, applicants = [] } = job;
+    const jobsWithApplicants = await Promise.all(
+      jobs.map(async (job) => {
+        const { _id: jobId, applicants = [] } = job;
 
-          // Fetch scores
-          let scores = {};
-          try {
-            const { data: rankingData } = await api.getRankedApplicants(jobId);
-            scores = rankingData?.scores || {};
-          } catch (err) {
-            console.warn(`Ranking fetch failed for job ${jobId}:`, err.message);
-          }
+        // Skip ranking if no applicants
+        if (!applicants.length) {
+          console.log(`Skipping ranking for job ${jobId} — no applicants`);
+          return { ...job, applicants: [] };
+        }
 
-          // Populate applicants with profiles and scores
-          const populatedApplicants = await Promise.all(
-            applicants.map(async (applicant) => {
-              const rawStudentId = this.normalizeStudentId(applicant.studentId);
-              if (!rawStudentId) return null;
+        // Fetch scores
+        let scores = {};
+        try {
+          const { data: rankingData } = await api.getRankedApplicants(jobId);
+          scores = rankingData?.scores || {};
+        } catch (err) {
+          console.warn(`Ranking fetch failed for job ${jobId}:`, err.message);
+        }
 
-              try {
-                const { data: profile } = await api.getProfileById(rawStudentId);
-                return {
-                  ...profile,
-                  studentId: rawStudentId,
-                  status: applicant.status,
-                  score: scores[rawStudentId] ?? null,
-                };
-              } catch (err) {
-                console.error(`Profile fetch error for ${rawStudentId}:`, err.message);
-                return null;
-              }
-            })
-          );
+        // Populate applicants with profiles and scores
+        const populatedApplicants = await Promise.all(
+          applicants.map(async (applicant) => {
+            const rawStudentId = this.normalizeStudentId(applicant.studentId);
+            if (!rawStudentId) return null;
 
-          return { ...job, applicants: populatedApplicants.filter(Boolean) };
-        })
-      );
+            try {
+              const { data: profile } = await api.getProfileById(rawStudentId);
+              return {
+                ...profile,
+                studentId: rawStudentId,
+                status: applicant.status,
+                score: scores[rawStudentId] ?? null,
+              };
+            } catch (err) {
+              console.error(`Profile fetch error for ${rawStudentId}:`, err.message);
+              return null;
+            }
+          })
+        );
 
-      this.setState({ jobs: jobsWithApplicants });
-    } catch (error) {
-      console.error('Error fetching jobs:', error.message);
-    }
-  };
+        return { ...job, applicants: populatedApplicants.filter(Boolean) };
+      })
+    );
+    console.log("✅ Jobs with applicants:", jobsWithApplicants);
+    this.setState({ jobs: jobsWithApplicants });
+  } catch (error) {
+    console.error('Error fetching jobs:', error.message);
+  }
+};
+
 
   handleDelete = async (e) => {
     const { api } = this.props;

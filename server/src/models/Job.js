@@ -28,5 +28,7 @@ const JobSchema = mongoose.Schema({
     default: Date.now,
   },
 });
+JobSchema.index({ _companyId: 1 });
+JobSchema.index({ 'applicants.studentId': 1 });
 
 module.exports = mongoose.model('Jobs', JobSchema);
