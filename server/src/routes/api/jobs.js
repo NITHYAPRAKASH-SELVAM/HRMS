@@ -3,6 +3,9 @@ const router = express.Router();
 const mongoose = require('mongoose'); // ✅ Needed for ObjectId conversion
 const authorization = require('../../middlewares/authorization');
 const Job = require('../../models/Job');
+// server/src/ml/index.js
+const { screenApplicant } = require('./screenwrapper'); // For single profile
+const { rankApplicants } = require('./rankwrapper');    // For batch ranking
 const { STUDENT, COMPANY } = require('../../constants/roles');
 
 // ✅ Updated: GET Jobs applied by the logged-in student (returns only student's own applicant info)
@@ -187,6 +190,14 @@ router.get('/', authorization, async (req, res) => {
     console.error('❌ Fetch Jobs Error:', error);
     res.status(400).send({ message: error.message });
   }
+});
+router.get('/:id/ranked-applicants', async (req, res) => {
+  const job = await Job.findById(req.params.id).populate('applicants.studentId');
+  const jobDesc = job.description;
+  const applicants = job.applicants.map(a => a.studentId);
+
+  const ranked = await rankApplicants(applicants, jobDesc); // call Python or internal method
+  res.json(ranked);
 });
 
 module.exports = router;

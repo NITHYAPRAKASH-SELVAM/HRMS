@@ -9,67 +9,69 @@ class JobsContainer extends Component {
     jobs: [],
     isProcessing: false,
     selectedJobId: '',
-    filterStatus: 'all',
+    filterStatus: '',
   };
 
   componentDidMount() {
-    this.getJobs();
+    this.getJobsWithApplicantsAndScores();
   }
 
-  getJobs = () => {
-    const { api } = this.props;
-
-    api
-      .getJobs()
-      .then(async response => {
-        const { data } = response;
-
-        const jobPromises = data.map(async job => {
-          const applicants = job.applicants;
-          console.log('Job applicants:', applicants);
-
-
-          const profilePromises = applicants.map(async applicant => {
-            let { studentId } = applicant;
-          
-            // Defensive recovery if studentId is an object with numeric keys
-            if (typeof studentId === 'object' && studentId !== null) {
-              studentId = Object.values(studentId).join('');
-            }
-          
-            if (!studentId || typeof studentId !== 'string') {
-              console.warn('Missing or malformed studentId for applicant:', applicant);
-              return null;
-            }
-          
-            try {
-              const res = await api.getProfileById(studentId);
-              return {
-                ...res.data,
-                status: applicant.status,
-                studentId,
-              };
-            } catch (err) {
-              console.error('Error fetching applicant:', err.message);
-              return null;
-            }
-          });
-          
-          
-
-          const populatedApplicants = (await Promise.all(profilePromises)).filter(Boolean);
-          return { ...job, applicants: populatedApplicants };
-        });
-
-        const jobsWithApplicants = await Promise.all(jobPromises);
-        this.setState({ jobs: jobsWithApplicants });
-      })
-      .catch(error => {
-        console.error('Error fetching jobs:', error.message);
-      });
+  normalizeStudentId = (studentId) => {
+    if (typeof studentId === 'object' && studentId !== null) {
+      return Object.values(studentId).join('');
+    }
+    return typeof studentId === 'string' ? studentId : '';
   };
 
-  handleDelete = e => {
+  getJobsWithApplicantsAndScores = async () => {
+    const { api } = this.props;
+
+    try {
+      const response = await api.getJobs();
+      const jobs = response.data;
+
+      const jobPromises = jobs.map(async (job) => {
+        const { _id: jobId, applicants = [] } = job;
+
+        // Fetch ranking scores for applicants
+        let scores = {};
+        try {
+          const rankingResponse = await api.get(`/jobs/${jobId}/ranked-applicants`);
+          scores = rankingResponse.data?.scores || {};
+        } catch (err) {
+          console.warn(`Ranking fetch failed for job ${jobId}:`, err.message);
+        }
+
+        const profilePromises = applicants.map(async (applicant) => {
+          const rawStudentId = this.normalizeStudentId(applicant.studentId);
+          if (!rawStudentId) return null;
+
+          try {
+            const profileRes = await api.getProfileById(rawStudentId);
+            return {
+              ...profileRes.data,
+              studentId: rawStudentId,
+              status: applicant.status,
+              score: scores[rawStudentId] ?? null,
+            };
+          } catch (err) {
+            console.error(`Error fetching profile for ${rawStudentId}:`, err.message);
+            return null;
+          }
+        });
+
+        const populatedApplicants = (await Promise.all(profilePromises)).filter(Boolean);
+        return { ...job, applicants: populatedApplicants };
+      });
+
+      const jobsWithApplicants = await Promise.all(jobPromises);
+      this.setState({ jobs: jobsWithApplicants });
+    } catch (error) {
+      console.error('Error fetching jobs:', error.message);
+    }
+  };
+
+  handleDelete = (e) => {
     const { api } = this.props;
     const id = e.target.dataset.id;
 
@@ -77,8 +79,8 @@ class JobsContainer extends Component {
 
     api
       .deleteJob(id)
-      .then(() => this.getJobs())
-      .catch(error => console.log(error.response?.data?.message))
+      .then(() => this.getJobsWithApplicantsAndScores())
+      .catch(error => console.error(error.response?.data?.message))
       .finally(() => this.setState({ isProcessing: false }));
   };
 
@@ -87,7 +89,7 @@ class JobsContainer extends Component {
 
     api
       .updateApplicantStatus(jobId, studentId, status)
-      .then(() => this.getJobs())
+      .then(() => this.getJobsWithApplicantsAndScores())
       .catch(error => {
         console.error('Error updating status:', error.message);
       });
