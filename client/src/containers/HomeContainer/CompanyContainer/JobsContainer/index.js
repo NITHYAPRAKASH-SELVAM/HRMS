@@ -27,72 +27,76 @@ class JobsContainer extends Component {
     const { api } = this.props;
 
     try {
-      const response = await api.getJobs();
-      const jobs = response.data;
+      const { data: jobs } = await api.getJobs();
 
-      const jobPromises = jobs.map(async (job) => {
-        const { _id: jobId, applicants = [] } = job;
+      const jobsWithApplicants = await Promise.all(
+        jobs.map(async (job) => {
+          const { _id: jobId, applicants = [] } = job;
 
-        // Fetch ranking scores for applicants
-        let scores = {};
-        try {
-          const rankingResponse = await api.get(`/jobs/${jobId}/ranked-applicants`);
-          scores = rankingResponse.data?.scores || {};
-        } catch (err) {
-          console.warn(`Ranking fetch failed for job ${jobId}:`, err.message);
-        }
-
-        const profilePromises = applicants.map(async (applicant) => {
-          const rawStudentId = this.normalizeStudentId(applicant.studentId);
-          if (!rawStudentId) return null;
-
+          // Fetch scores
+          let scores = {};
           try {
-            const profileRes = await api.getProfileById(rawStudentId);
-            return {
-              ...profileRes.data,
-              studentId: rawStudentId,
-              status: applicant.status,
-              score: scores[rawStudentId] ?? null,
-            };
+            const { data: rankingData } = await api.getRankedApplicants(jobId);
+            scores = rankingData?.scores || {};
           } catch (err) {
-            console.error(`Error fetching profile for ${rawStudentId}:`, err.message);
-            return null;
+            console.warn(`Ranking fetch failed for job ${jobId}:`, err.message);
           }
-        });
 
-        const populatedApplicants = (await Promise.all(profilePromises)).filter(Boolean);
-        return { ...job, applicants: populatedApplicants };
-      });
+          // Populate applicants with profiles and scores
+          const populatedApplicants = await Promise.all(
+            applicants.map(async (applicant) => {
+              const rawStudentId = this.normalizeStudentId(applicant.studentId);
+              if (!rawStudentId) return null;
 
-      const jobsWithApplicants = await Promise.all(jobPromises);
+              try {
+                const { data: profile } = await api.getProfileById(rawStudentId);
+                return {
+                  ...profile,
+                  studentId: rawStudentId,
+                  status: applicant.status,
+                  score: scores[rawStudentId] ?? null,
+                };
+              } catch (err) {
+                console.error(`Profile fetch error for ${rawStudentId}:`, err.message);
+                return null;
+              }
+            })
+          );
+
+          return { ...job, applicants: populatedApplicants.filter(Boolean) };
+        })
+      );
+
       this.setState({ jobs: jobsWithApplicants });
     } catch (error) {
       console.error('Error fetching jobs:', error.message);
     }
   };
 
-  handleDelete = (e) => {
+  handleDelete = async (e) => {
     const { api } = this.props;
-    const id = e.target.dataset.id;
+    const jobId = e.target.dataset.id;
 
-    this.setState({ isProcessing: true, selectedJobId: id });
+    this.setState({ isProcessing: true, selectedJobId: jobId });
 
-    api
-      .deleteJob(id)
-      .then(() => this.getJobsWithApplicantsAndScores())
-      .catch(error => console.error(error.response?.data?.message))
-      .finally(() => this.setState({ isProcessing: false }));
+    try {
+      await api.deleteJob(jobId);
+      await this.getJobsWithApplicantsAndScores();
+    } catch (error) {
+      console.error(error.response?.data?.message || 'Failed to delete job');
+    } finally {
+      this.setState({ isProcessing: false });
+    }
   };
 
-  handleStatusUpdate = (jobId, studentId, status) => {
+  handleStatusUpdate = async (jobId, studentId, status) => {
     const { api } = this.props;
-
-    api
-      .updateApplicantStatus(jobId, studentId, status)
-      .then(() => this.getJobsWithApplicantsAndScores())
-      .catch(error => {
-        console.error('Error updating status:', error.message);
-      });
+    try {
+      await api.updateApplicantStatus(jobId, studentId, status);
+      await this.getJobsWithApplicantsAndScores();
+    } catch (error) {
+      console.error(`Status update failed:`, error.message);
+    }
   };
 
   handleViewProfile = (studentId) => {

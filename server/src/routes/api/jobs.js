@@ -191,13 +191,31 @@ router.get('/', authorization, async (req, res) => {
     res.status(400).send({ message: error.message });
   }
 });
-router.get('/:id/ranked-applicants', async (req, res) => {
-  const job = await Job.findById(req.params.id).populate('applicants.studentId');
-  const jobDesc = job.description;
-  const applicants = job.applicants.map(a => a.studentId);
+router.get('/:id/ranked-applicants', authorization, async (req, res) => {
+  const { _id, role } = req.user;
+  try {
+    const job = await Job.findById(req.params.id).populate('applicants.studentId');
+    if (!job) return res.status(404).json({ message: 'Job not found' });
 
-  const ranked = await rankApplicants(applicants, jobDesc); // call Python or internal method
-  res.json(ranked);
+    // Restrict to company that owns the job or admin
+    if (role === COMPANY && job._companyId.toString() !== _id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const jobDesc = job.description;
+    const applicants = job.applicants?.map(a => a.studentId) || [];
+
+    if (applicants.length === 0 || !jobDesc) {
+      return res.status(400).json({ message: 'Insufficient data to rank applicants' });
+    }
+
+    const ranked = await rankApplicants(applicants, jobDesc);
+    res.json(ranked);
+  } catch (err) {
+    console.error('Ranking fetch failed:', err.message || err);
+    res.status(500).json({ message: 'Internal Server Error during ranking' });
+  }
 });
 
+s
 module.exports = router;

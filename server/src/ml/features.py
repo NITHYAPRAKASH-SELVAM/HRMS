@@ -1,9 +1,13 @@
+import os
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 
-def load_vectorizer(path='server\src\ml\model_data\tfidf_vectorizer.pkl'):
+def load_vectorizer(path=None):
+    if path is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))  # directory of features.py
+        path = os.path.join(base_dir, "model_data", "tfidf_vectorizer.pkl")
     with open(path, 'rb') as f:
         return pickle.load(f)
 

@@ -2,15 +2,21 @@ import pickle
 import numpy as np
 import sys
 import os
+
+# Ensure ml/features.py is importable
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from ml.features import extract_features
 
 # Load model once globally
 _model = None
+
 def load_model():
     global _model
     if _model is None:
-        with open('server\src\ml\model_data\logistic_model.pkl', 'rb') as f:
+        base_dir = os.path.dirname(os.path.abspath(__file__))  # path to logistic_model.py
+        model_path = os.path.join(base_dir, "model_data", "logistic_model.pkl")
+        with open(model_path, 'rb') as f:
             _model = pickle.load(f)
     return _model
 
