@@ -4,7 +4,6 @@ import { connect } from 'react-redux';
 import { setUser } from '../../actions';
 import { withAPI } from '../../services/api';
 import withRouter from '../../services/withRouter';
-import * as ROUTES from '../../constants/routes';
 import * as ROLES from '../../constants/roles';
 
 import LogIn from '../../components/LogIn';
@@ -30,19 +29,17 @@ class LogInContainer extends Component {
 
     let role = null;
 
-    switch (location.pathname) {
-      case ROUTES.LOG_IN_ADMIN:
-        role = ROLES.ADMIN;
-        break;
-      case ROUTES.LOG_IN_COMPANY:
-        role = ROLES.COMPANY;
-        break;
-      case ROUTES.LOG_IN_STUDENT:
-        role = ROLES.STUDENT;
-        break;
-      default:
-        break;
+    const path = location.pathname.toLowerCase();
+
+    if (path.includes('admin')) {
+      role = ROLES.ADMIN;
     }
+    else if (path.includes('company')) {
+      role = ROLES.COMPANY;
+    } 
+    else if (path.includes('student')) {
+      role = ROLES.STUDENT;
+      }
 
     api
       .logIn(role, { email, password })
