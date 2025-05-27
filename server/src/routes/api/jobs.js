@@ -213,7 +213,7 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
     const rankedScores = await rankApplicants(applicants.map(a => a.student), jobDesc);
 
     const rankedApplicants = rankedScores.map(({ studentId, score }) => {
-        const meta = applicants.find(a => a.student._id.toString() === studentId.toString());
+        const meta = applicants.find(a => a.student._id.toString() === String(studentId));
         return { 
           applicant: meta?.student || null, 
           score, 
@@ -231,6 +231,23 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal Server Error during ranking' });
   }
 });
+// GET screening result for an applicant under a job
+router.get('/:jobId/:studentId', authorization, async (req, res) => {
+  const { _id, role } = req.user;
+  const { jobId, studentId } = req.params;
 
+  try {
+    const job = await Job.findById(jobId);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+    if (role === COMPANY && job._companyId.toString() !== _id.toString())
+      return res.status(403).json({ message: 'Access denied' });
+
+    const isFit = await screenApplicant(studentId, jobId);
+    return res.status(200).json({ fit: isFit });
+  } catch (err) {
+    console.error(`❌ Screening error for ${studentId} in job ${jobId}:`, err);
+    return res.status(500).json({ message: 'Screening failed.' });
+  }
+});
 
 module.exports = router;

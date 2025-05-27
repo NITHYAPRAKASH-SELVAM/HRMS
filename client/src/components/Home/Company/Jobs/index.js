@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Fragment } from 'react';
+import React, { useState, Fragment } from 'react';
 import PropTypes from 'prop-types';
 import {
   Container,
@@ -20,65 +20,61 @@ const Jobs = ({ jobs, handleDelete, isProcessing, selectedJobId, handleStatusUpd
   const [screeningResults, setScreeningResults] = useState({});
   const navigate = useNavigate();
 
-  const handleToggle = index => {
-    setOpenJobIndex(index === openJobIndex ? null : index);
-    setStatusFilter(''); // Reset filter on toggle
-  };
+  const handleToggle = async (index) => {
+    if (openJobIndex === index) {
+      // Close if already open
+      setOpenJobIndex(null);
+      return;
+    }
 
-  useEffect(() => {
-    const fetchRankings = async () => {
-      const result = {};
+    setOpenJobIndex(index);
+    setStatusFilter('');
+
+    const job = jobs[index];
+    if (!job) return;
+
+    const token = localStorage.getItem('token');
+
+    try {
+      const res = await axios.get(`/api/jobs/${job._id}/ranked-applicants`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const rankedDataArray = Array.isArray(res.data.data) ? res.data.data : [];
       const screenResultMap = {};
-      const token = localStorage.getItem('token');
 
-      await Promise.all(
-        jobs.map(async job => {
+      const scored = await Promise.all(
+        rankedDataArray.map(async (r) => {
+          const app = job.applicants.find(a =>
+            (a.studentId?._id || a.studentId) === (r.applicant._id || r.applicant)
+          );
+
+          if (!app) return null;
+
           try {
-            const res = await axios.get(`/api/jobs/${job._id}/ranked-applicants`, {
-              headers: { Authorization: `Bearer ${token}` }
+            const screenRes = await axios.get(`/api/jobs/${job._id}/${app.studentId?._id || app.studentId}`, {
+              headers: { Authorization: `Bearer ${token}` },
             });
 
-            const rankedDataArray = Array.isArray(res.data.data) ? res.data.data : [];
-
-            const scored = await Promise.all(
-              rankedDataArray.map(async r => {
-                const app = job.applicants.find(a =>
-                  (a.studentId?._id || a.studentId) === (r.applicant._id || r.applicant)
-                );
-
-                if (!app) return null;
-
-                // Fetch screening status
-                try {
-                  const screenRes = await axios.get(`/api/jobs/${job._id}/${app.studentId?._id || app.studentId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                  });
-
-                  const isFit = screenRes.data?.fit === true;
-                  screenResultMap[`${job._id}_${app.studentId?._id || app.studentId}`] = isFit;
-                } catch (screenErr) {
-                  console.error(`Screening failed for applicant ${app.studentId}`, screenErr);
-                  screenResultMap[`${job._id}_${app.studentId?._id || app.studentId}`] = false;
-                }
-
-                return { ...app, score: r.score };
-              })
-            );
-
-            result[job._id] = scored.filter(Boolean);
-          } catch (err) {
-            console.error(`Error ranking job ${job._id}:`, err);
-            result[job._id] = job.applicants;
+            const isFit = screenRes.data?.fit === true;
+            screenResultMap[`${job._id}_${app.studentId?._id || app.studentId}`] = isFit;
+          } catch (screenErr) {
+            console.error(`Screening failed for applicant ${app.studentId}`, screenErr);
+            screenResultMap[`${job._id}_${app.studentId?._id || app.studentId}`] = false;
           }
+
+          return { ...app, score: r.score };
         })
       );
 
-      setRankedApplicants(result);
-      setScreeningResults(screenResultMap);
-    };
-
-    if (jobs.length > 0) fetchRankings();
-  }, [jobs]);
+      setRankedApplicants(prev => ({ ...prev, [job._id]: scored.filter(Boolean) }));
+      setScreeningResults(prev => ({ ...prev, ...screenResultMap }));
+    } catch (err) {
+      console.error(`Error ranking job ${job._id}:`, err);
+      // Fallback: use existing applicants without score
+      setRankedApplicants(prev => ({ ...prev, [job._id]: job.applicants }));
+    }
+  };
 
   const renderFitBadge = (jobId, studentId) => {
     const key = `${jobId}_${studentId}`;

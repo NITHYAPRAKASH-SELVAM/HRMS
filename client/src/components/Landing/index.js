@@ -11,7 +11,7 @@ const Landing = () => {
         <div className="container-fluid py-5">
           <h1 className="display-5 fw-bold">Recruit faster with CRS!</h1>
           <p className="col-md-12 fs-4">
-            Campus Recruitment System (CRS) is a recruiting app that makes the
+            AI-ENHANCED HR Recruitment System (HRMS) is a recruiting app that makes the
             hiring process faster and simpler so that your team can hire the
             best people, faster.
           </p>
