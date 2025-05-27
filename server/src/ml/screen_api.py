@@ -1,31 +1,32 @@
-# server/src/ml/screen_api.py
+# server/src/ml/screen_flask_api.py
 
-import sys
-import json
-import sys
+from flask import Flask, request, jsonify
 import os
+import sys
+
+# Add parent directory to path for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from ml.features import extract_features
+
 from ml.logistic_model import predict_fit
 
-def main():
+app = Flask(__name__)
+
+@app.route('/predict-fit', methods=['POST'])
+def predict_fit_api():
     try:
-        # Read input JSON from Node.js
-        raw = sys.stdin.read()
-        data = json.loads(raw)
+        data = request.get_json()
 
         profile = data.get("profile")
         job_description = data.get("job_description")
 
         if not profile or not job_description:
-            print(json.dumps({"error": "Missing data"}))
-            return
+            return jsonify({"error": "Missing profile or job_description"}), 400
 
         prob = predict_fit(profile, job_description)
-        print(json.dumps({"fit_score": prob}))
+        return jsonify({"fit_score": prob}), 200
 
     except Exception as e:
-        print(json.dumps({"error": str(e)}))
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    main()
+    app.run(port=5001, debug=True)

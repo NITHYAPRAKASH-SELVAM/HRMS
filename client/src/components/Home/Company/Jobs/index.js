@@ -17,8 +17,8 @@ const Jobs = ({ jobs, handleDelete, isProcessing, selectedJobId, handleStatusUpd
   const [openJobIndex, setOpenJobIndex] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [rankedApplicants, setRankedApplicants] = useState({});
+  const [screeningResults, setScreeningResults] = useState({});
   const navigate = useNavigate();
-  const fitThreshold = 0.5;
 
   const handleToggle = index => {
     setOpenJobIndex(index === openJobIndex ? null : index);
@@ -26,50 +26,67 @@ const Jobs = ({ jobs, handleDelete, isProcessing, selectedJobId, handleStatusUpd
   };
 
   useEffect(() => {
-  const fetchRankings = async () => {
-    const result = {};
-    const token = localStorage.getItem('token');
+    const fetchRankings = async () => {
+      const result = {};
+      const screenResultMap = {};
+      const token = localStorage.getItem('token');
 
-    await Promise.all(
-      jobs.map(async job => {
-        try {
-          const res = await axios.get(`/api/jobs/${job._id}/ranked-applicants`, {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          });
+      await Promise.all(
+        jobs.map(async job => {
+          try {
+            const res = await axios.get(`/api/jobs/${job._id}/ranked-applicants`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
 
-          const rankedDataArray = Array.isArray(res.data.data) ? res.data.data : [];
+            const rankedDataArray = Array.isArray(res.data.data) ? res.data.data : [];
 
-          const scored = rankedDataArray.map(r => {
-            const app = job.applicants.find(a =>
-              (a.studentId?._id || a.studentId) === (r.applicant._id || r.applicant)
+            const scored = await Promise.all(
+              rankedDataArray.map(async r => {
+                const app = job.applicants.find(a =>
+                  (a.studentId?._id || a.studentId) === (r.applicant._id || r.applicant)
+                );
+
+                if (!app) return null;
+
+                // Fetch screening status
+                try {
+                  const screenRes = await axios.get(`/api/jobs/${job._id}/${app.studentId?._id || app.studentId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+
+                  const isFit = screenRes.data?.fit === true;
+                  screenResultMap[`${job._id}_${app.studentId?._id || app.studentId}`] = isFit;
+                } catch (screenErr) {
+                  console.error(`Screening failed for applicant ${app.studentId}`, screenErr);
+                  screenResultMap[`${job._id}_${app.studentId?._id || app.studentId}`] = false;
+                }
+
+                return { ...app, score: r.score };
+              })
             );
-            return app ? { ...app, score: r.score } : null;
-          }).filter(Boolean);
 
-          result[job._id] = scored;
-        } catch (err) {
-          console.error(`Error ranking job ${job._id}:`, err);
-          result[job._id] = job.applicants;
-        }
-      })
-    );
+            result[job._id] = scored.filter(Boolean);
+          } catch (err) {
+            console.error(`Error ranking job ${job._id}:`, err);
+            result[job._id] = job.applicants;
+          }
+        })
+      );
 
-    setRankedApplicants(result);
-  };
+      setRankedApplicants(result);
+      setScreeningResults(screenResultMap);
+    };
 
-  if (jobs.length > 0) fetchRankings();
-}, [jobs]);
+    if (jobs.length > 0) fetchRankings();
+  }, [jobs]);
 
+  const renderFitBadge = (jobId, studentId) => {
+    const key = `${jobId}_${studentId}`;
+    const isFit = screeningResults[key];
 
-  const renderFitBadge = score => {
-    if (score == null) return null;
-    return score >= fitThreshold ? (
-      <Badge bg="success" className="ms-2">Fit</Badge>
-    ) : (
-      <Badge bg="secondary" className="ms-2">Unfit</Badge>
-    );
+    if (isFit === true) return <Badge bg="success" className="ms-2">Fit</Badge>;
+    if (isFit === false) return <Badge bg="secondary" className="ms-2">Unfit</Badge>;
+    return <Badge bg="warning" className="ms-2">Checking...</Badge>;
   };
 
   return (
@@ -161,7 +178,7 @@ const Jobs = ({ jobs, handleDelete, isProcessing, selectedJobId, handleStatusUpd
                                         <td>{applicant.status}</td>
                                         <td>
                                           {applicant.score != null ? applicant.score.toFixed(2) : '-'}
-                                          {renderFitBadge(applicant.score)}
+                                          {renderFitBadge(job._id, applicant.studentId?._id || applicant.studentId)}
                                         </td>
                                         <td>
                                           <Button
