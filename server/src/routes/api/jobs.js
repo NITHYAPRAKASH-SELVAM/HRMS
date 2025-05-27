@@ -212,10 +212,17 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
 
     const rankedScores = await rankApplicants(applicants.map(a => a.student), jobDesc);
 
-    const rankedApplicants = rankedScores.map(({ applicant, score }) => {
-      const meta = applicants.find(a => a.student._id.toString() === applicant._id.toString());
-      return { applicant, score, status: meta?.status, appliedAt: meta?.appliedAt };
-    }).sort((a, b) => b.score - a.score);  // optional sort
+    const rankedApplicants = rankedScores.map(({ studentId, score }) => {
+        const meta = applicants.find(a => a.student._id.toString() === studentId.toString());
+        return { 
+          applicant: meta?.student || null, 
+          score, 
+          status: meta?.status, 
+          appliedAt: meta?.appliedAt 
+         };
+        }).filter(r => r.applicant) // optional, filters out any unmatched
+          .sort((a, b) => b.score - a.score);
+
 
     res.status(200).json({ success: true, data: rankedApplicants });
 

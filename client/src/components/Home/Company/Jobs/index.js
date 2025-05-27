@@ -26,32 +26,42 @@ const Jobs = ({ jobs, handleDelete, isProcessing, selectedJobId, handleStatusUpd
   };
 
   useEffect(() => {
-    const fetchRankings = async () => {
-      const result = {};
+  const fetchRankings = async () => {
+    const result = {};
+    const token = localStorage.getItem('token');
 
-      await Promise.all(
-        jobs.map(async job => {
-          try {
-            const res = await axios.get(`/api/jobs/${job._id}/ranked-applicants`);
-            const scored = res.data.map(r => {
-              const app = job.applicants.find(a =>
-                (a.studentId?._id || a.studentId) === r.studentId
-              );
-              return app ? { ...app, score: r.score } : null;
-            }).filter(Boolean);
-            result[job._id] = scored;
-          } catch (err) {
-            console.error(`Error ranking job ${job._id}:`, err);
-            result[job._id] = job.applicants;
-          }
-        })
-      );
+    await Promise.all(
+      jobs.map(async job => {
+        try {
+          const res = await axios.get(`/api/jobs/${job._id}/ranked-applicants`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
 
-      setRankedApplicants(result);
-    };
+          const rankedDataArray = Array.isArray(res.data.data) ? res.data.data : [];
 
-    if (jobs.length > 0) fetchRankings();
-  }, [jobs]);
+          const scored = rankedDataArray.map(r => {
+            const app = job.applicants.find(a =>
+              (a.studentId?._id || a.studentId) === (r.applicant._id || r.applicant)
+            );
+            return app ? { ...app, score: r.score } : null;
+          }).filter(Boolean);
+
+          result[job._id] = scored;
+        } catch (err) {
+          console.error(`Error ranking job ${job._id}:`, err);
+          result[job._id] = job.applicants;
+        }
+      })
+    );
+
+    setRankedApplicants(result);
+  };
+
+  if (jobs.length > 0) fetchRankings();
+}, [jobs]);
+
 
   const renderFitBadge = score => {
     if (score == null) return null;
