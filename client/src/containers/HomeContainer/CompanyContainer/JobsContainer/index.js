@@ -13,6 +13,7 @@ class JobsContainer extends Component {
     openJobIndex: null,
     applicantsByJobId: {},
     screeningResults: {}, // new addition
+    rankedApplicants: {}, // new addition
  // store applicants and scores per job here
   };
 
@@ -40,7 +41,7 @@ class JobsContainer extends Component {
   fetchApplicantsForJob = async (job) => {
     const { api } = this.props;
     const jobId = job._id;
-
+    
     if (!job.applicants || job.applicants.length === 0) {
       this.setState(state => ({
         applicantsByJobId: {
@@ -55,6 +56,7 @@ class JobsContainer extends Component {
       // Fetch ranked applicants scores
       const { data: rankingData } = await api.getRankedApplicants(jobId);
       const scores = rankingData?.scores || {};
+      console.log(`Fetched scores for job ${jobId}:`, scores);
 
       // Fetch full profiles for applicants
       const populatedApplicants = await Promise.all(
@@ -140,9 +142,12 @@ class JobsContainer extends Component {
       this.setState({ openJobIndex: null });
     }
   };
+  
     renderFitBadge = (jobId, studentId) => {
     const key = `${jobId}_${studentId}`;
     const isFit = this.state.screeningResults[key];
+    console.log("Screening result (fit score):", isFit);
+
 
     if (isFit === true) return <span className="badge bg-success ms-2">Fit</span>;
     if (isFit === false) return <span className="badge bg-secondary ms-2">Unfit</span>;
@@ -222,6 +227,9 @@ class JobsContainer extends Component {
         handleToggle={this.handleToggle}
         openJobIndex={openJobIndex}
         renderFitBadge={this.renderFitBadge}
+        screeningResults={this.state.screeningResults}
+        rankedApplicants={applicantsByJobId}  // or define a separate rankedApplicants if you prefer
+        
       />
     );
   }

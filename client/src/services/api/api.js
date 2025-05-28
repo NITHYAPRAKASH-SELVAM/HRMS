@@ -62,6 +62,10 @@ class API {
     axios.get(`/api/jobs/${jobId}/ranked-applicants`, {
       headers: this.getAuthHeader(),
     });
+  getApplicantScreening=(jobId, studentId) =>
+    axios.get(`/api/jobs/${jobId}/${studentId}`, {
+      headers: this.getAuthHeader(),
+    });
 
   deleteJob = id =>
     axios.delete(`/api/jobs/${id}`, { headers: this.getAuthHeader() });

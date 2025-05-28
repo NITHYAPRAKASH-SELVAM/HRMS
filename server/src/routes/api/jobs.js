@@ -241,6 +241,7 @@ router.get('/:jobId/:studentId', authorization, async (req, res) => {
     if (!job) return res.status(404).json({ message: 'Job not found' });
     if (role === COMPANY && job._companyId.toString() !== _id.toString())
       return res.status(403).json({ message: 'Access denied' });
+    console.log(`🔍 Screening student ${studentId} for job ${jobId} by user ${_id}`);
 
     const isFit = await screenApplicant(studentId, jobId);
     return res.status(200).json({ fit: isFit });

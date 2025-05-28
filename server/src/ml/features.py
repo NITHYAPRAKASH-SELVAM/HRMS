@@ -32,12 +32,17 @@ def extract_features(profile, job_description, vectorizer=None):
     ])
     if not resume_text.strip():
         resume_text = "N/A"
-
+    job_text = " ".join([
+        job_description.get('title', ''),
+        job_description.get('description', '')
+    ]).strip()
+    if not job_text:
+        job_text = "N/A"
     # TF-IDF similarity
     if vectorizer is None:
         vectorizer = load_vectorizer()
 
-    tfidf_job = vectorizer.transform([job_description])
+    tfidf_job = vectorizer.transform([job_text])
     tfidf_resume = vectorizer.transform([resume_text])
     text_similarity = cosine_similarity(tfidf_job, tfidf_resume)[0, 0]
 
