@@ -1,15 +1,23 @@
 # server/src/ml/rank_api.py
 
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+from dotenv import load_dotenv
 from pymongo import MongoClient
 from bson import ObjectId
 import traceback
 import os
+import sys
+import logging
 import time
 
 from ltr_model import rank_applicants
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
+CORS(app)  # <-- This enables CORS for all routes and origins by default
+logging.basicConfig(level=logging.DEBUG)
 
 # MongoDB setup
 MONGO_URI = os.getenv("MONGO_URI")
