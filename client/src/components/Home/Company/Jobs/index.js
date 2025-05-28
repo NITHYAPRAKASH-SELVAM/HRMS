@@ -14,6 +14,10 @@ import axios from 'axios';
 import * as ROUTES from '../../../../constants/routes';
 
 const Jobs = ({ jobs, handleDelete, isProcessing, selectedJobId, handleStatusUpdate }) => {
+   const [openJobIndex, setOpenJobIndex] = useState(null);
+  const [rankedApplicants, setRankedApplicants] = useState({});
+  const [screeningResults, setScreeningResults] = useState({});
+  const [statusFilter, setStatusFilter] = useState('');
 const navigate = useNavigate();
 
   const handleToggle = async (index) => {
