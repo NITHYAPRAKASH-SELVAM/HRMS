@@ -1,186 +1,147 @@
 import React, { Component } from 'react';
-import { withAPI } from '../../../../services/api';
-import withRouter from '../../../../services/withRouter';
-
-import Jobs from '../../../../components/Home/Company/Jobs';
+import Jobs from '../../components/company/jobs/Jobs';
+import { connect } from 'react-redux';
+import { getCompanyJobs, deleteJob, updateApplicantStatus } from '../../actions/jobActions';
+import { withRouter } from 'react-router-dom';
+import PropTypes from 'prop-types';
 
 class JobsContainer extends Component {
   state = {
-    jobs: [],
     isProcessing: false,
-    selectedJobId: '',
-    filterStatus: '',
+    selectedJobId: null,
     openJobIndex: null,
-    applicantsByJobId: {}, // store applicants and scores per job here
+    filterStatus: '',
+    rankedApplicantsByJobId: {},
+    screeningResults: {},
   };
 
   componentDidMount() {
-    this.loadJobs();
+    this.props.getCompanyJobs();
   }
 
-  loadJobs = async () => {
-    const { api } = this.props;
-    try {
-      const { data: jobs } = await api.getJobs();
-      this.setState({ jobs });
-    } catch (error) {
-      console.error('Error fetching jobs:', error.message);
-    }
+  handleDelete = async (jobId) => {
+    this.setState({ isProcessing: true });
+    await this.props.deleteJob(jobId);
+    await this.props.getCompanyJobs();
+    this.setState({ isProcessing: false });
   };
 
-  normalizeStudentId = (studentId) => {
-    if (typeof studentId === 'object' && studentId !== null) {
-      return Object.values(studentId).join('');
-    }
-    return typeof studentId === 'string' ? studentId : '';
+  handleStatusUpdate = async (jobId, studentId, newStatus) => {
+    this.setState({ isProcessing: true });
+    await this.props.updateApplicantStatus(jobId, studentId, newStatus);
+    await this.props.getCompanyJobs();
+    this.setState({ isProcessing: false });
   };
 
-  fetchApplicantsForJob = async (job) => {
-    const { api } = this.props;
-    const jobId = job._id;
-
-    if (!job.applicants || job.applicants.length === 0) {
-      this.setState(state => ({
-        applicantsByJobId: {
-          ...state.applicantsByJobId,
-          [jobId]: [],
-        },
-      }));
-      return;
-    }
-
-    try {
-      // Fetch ranked applicants scores
-      const { data: rankingData } = await api.getRankedApplicants(jobId);
-      const scores = rankingData?.scores || {};
-
-      // Fetch full profiles for applicants
-      const populatedApplicants = await Promise.all(
-        job.applicants.map(async (applicant) => {
-          const rawStudentId = this.normalizeStudentId(applicant.studentId);
-          if (!rawStudentId) return null;
-
-          try {
-            const { data: profile } = await api.getProfileById(rawStudentId);
-            return {
-              ...profile,
-              studentId: rawStudentId,
-              status: applicant.status,
-              score: scores[rawStudentId] ?? null,
-            };
-          } catch (err) {
-            console.error(`Profile fetch error for ${rawStudentId}:`, err.message);
-            return null;
-          }
-        })
-      );
-
-      this.setState(state => ({
-        applicantsByJobId: {
-          ...state.applicantsByJobId,
-          [jobId]: populatedApplicants.filter(Boolean),
-        },
-      }));
-    } catch (err) {
-      console.warn(`Ranking or applicants fetch failed for job ${jobId}:`, err.message);
-      this.setState(state => ({
-        applicantsByJobId: {
-          ...state.applicantsByJobId,
-          [jobId]: job.applicants, // fallback, raw applicants without profiles/scores
-        },
-      }));
-    }
-  };
-
-  handleToggle = async (index) => {
-    const { jobs, openJobIndex } = this.state;
-    const newIndex = index === openJobIndex ? null : index;
-
-    if (newIndex !== null) {
-      // Fetch applicants only if not already fetched for that job
-      const jobId = jobs[newIndex]._id;
-      if (!this.state.applicantsByJobId[jobId]) {
-        await this.fetchApplicantsForJob(jobs[newIndex]);
-      }
-    }
-
-    this.setState({ openJobIndex: newIndex, filterStatus: '' }); // reset filter on toggle
-  };
-
-  handleDelete = async (e) => {
-    const { api } = this.props;
-    const jobId = e.target.dataset.id;
-
-    this.setState({ isProcessing: true, selectedJobId: jobId });
-
-    try {
-      await api.deleteJob(jobId);
-      await this.loadJobs();
-
-      // Also remove cached applicants for deleted job
-      this.setState(state => {
-        const newApplicants = { ...state.applicantsByJobId };
-        delete newApplicants[jobId];
-        return { applicantsByJobId: newApplicants };
-      });
-    } catch (error) {
-      console.error(error.response?.data?.message || 'Failed to delete job');
-    } finally {
-      this.setState({ isProcessing: false });
-    }
-  };
-
-  handleStatusUpdate = async (jobId, studentId, status) => {
-    const { api } = this.props;
-    try {
-      await api.updateApplicantStatus(jobId, studentId, status);
-      // Refresh applicants data for this job after update
-      const job = this.state.jobs.find(j => j._id === jobId);
-      if (job) await this.fetchApplicantsForJob(job);
-    } catch (error) {
-      console.error(`Status update failed:`, error.message);
-    }
+  handleViewProfile = (studentId) => {
+    this.props.history.push(`/view-profile/${studentId}`);
   };
 
   handleStatusFilterChange = (status) => {
     this.setState({ filterStatus: status });
   };
 
-  handleViewProfile = (studentId) => {
-    this.props.navigate(`/profile/${studentId}`);
+  fetchRankingAndScreening = async (job) => {
+    const { api } = this.props;
+    const jobId = job._id;
+
+    try {
+      const { data: rankingData } = await api.getRankedApplicants(jobId);
+      const rankedDataArray = Array.isArray(rankingData.data) ? rankingData.data : [];
+      const screenResultMap = {};
+      const applicantsWithScores = [];
+
+      for (const rank of rankedDataArray) {
+        const studentId = rank.applicant._id || rank.applicant;
+
+        const applicant = job.applicants.find(app =>
+          (app.studentId?._id || app.studentId) === studentId
+        );
+        if (!applicant) continue;
+
+        try {
+          const screenRes = await api.getScreeningResult(jobId, studentId);
+          const isFit = screenRes?.data?.fit === true;
+          screenResultMap[`${jobId}_${studentId}`] = isFit;
+        } catch (screenErr) {
+          console.warn(`Screening failed for ${studentId}:`, screenErr.message);
+          screenResultMap[`${jobId}_${studentId}`] = false;
+        }
+
+        applicantsWithScores.push({
+          ...applicant,
+          score: rank.score,
+        });
+      }
+
+      this.setState(prev => ({
+        rankedApplicantsByJobId: { ...prev.rankedApplicantsByJobId, [jobId]: applicantsWithScores },
+        screeningResults: { ...prev.screeningResults, ...screenResultMap },
+      }));
+    } catch (err) {
+      console.error(`Error fetching ranked applicants for job ${jobId}:`, err.message);
+      this.setState(prev => ({
+        rankedApplicantsByJobId: { ...prev.rankedApplicantsByJobId, [jobId]: job.applicants },
+      }));
+    }
+  };
+
+  handleToggle = async (index) => {
+    const { jobs } = this.props;
+    const { openJobIndex } = this.state;
+    const newIndex = index === openJobIndex ? null : index;
+
+    if (newIndex !== null) {
+      const job = jobs[newIndex];
+      if (!this.state.rankedApplicantsByJobId[job._id]) {
+        await this.fetchRankingAndScreening(job);
+      }
+    }
+
+    this.setState({ openJobIndex: newIndex, filterStatus: '' });
   };
 
   render() {
-    const {
-      jobs,
-      isProcessing,
-      selectedJobId,
-      filterStatus,
-      openJobIndex,
-      applicantsByJobId,
-    } = this.state;
+    const { jobs } = this.props;
+    const { isProcessing, selectedJobId, openJobIndex, filterStatus, rankedApplicantsByJobId, screeningResults } = this.state;
 
-    // Pass applicants for the open job only
-    const jobsWithApplicants = jobs.map(job => ({
-      ...job,
-      applicants: applicantsByJobId[job._id] || [],
-    }));
+    const jobsWithApplicants = jobs.map(job => {
+      const rankedApplicants = rankedApplicantsByJobId[job._id] || job.applicants;
+      return { ...job, applicants: rankedApplicants };
+    });
 
     return (
       <Jobs
         jobs={jobsWithApplicants}
         isProcessing={isProcessing}
         selectedJobId={selectedJobId}
-        filterStatus={filterStatus}
         handleStatusFilterChange={this.handleStatusFilterChange}
         handleDelete={this.handleDelete}
         handleStatusUpdate={this.handleStatusUpdate}
         handleViewProfile={this.handleViewProfile}
         handleToggle={this.handleToggle}
         openJobIndex={openJobIndex}
+        rankedApplicantsByJobId={rankedApplicantsByJobId}
+        screeningResults={screeningResults}
       />
     );
   }
 }
 
-export default withRouter(withAPI(JobsContainer));
+JobsContainer.propTypes = {
+  jobs: PropTypes.array.isRequired,
+  getCompanyJobs: PropTypes.func.isRequired,
+  deleteJob: PropTypes.func.isRequired,
+  updateApplicantStatus: PropTypes.func.isRequired,
+  api: PropTypes.object.isRequired,
+};
+
+const mapStateToProps = (state) => ({
+  jobs: state.jobs.companyJobs,
+});
+
+export default connect(mapStateToProps, {
+  getCompanyJobs,
+  deleteJob,
+  updateApplicantStatus,
+})(withRouter(JobsContainer));
