@@ -9,7 +9,7 @@ const Landing = () => {
     <Container>
       <div className="p-5 mb-4 bg-light rounded-3">
         <div className="container-fluid py-5">
-          <h1 className="display-5 fw-bold">Recruit faster with CRS!</h1>
+          <h1 className="display-5 fw-bold">Recruit faster with AI-HRMS!</h1>
           <p className="col-md-12 fs-4">
             AI-ENHANCED HR Recruitment System (HRMS) is a recruiting app that makes the
             hiring process faster and simpler so that your team can hire the

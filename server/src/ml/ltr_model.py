@@ -7,7 +7,7 @@ import time
 
 # Add parent directory to path for module imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from ml.features import extract_features
+from ml.features_rank import extract_features_for_rank as extract_features
 
 # Global model cache
 _model_cache = {}

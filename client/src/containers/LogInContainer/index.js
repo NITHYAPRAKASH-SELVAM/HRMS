@@ -16,30 +16,23 @@ class LogInContainer extends Component {
     error: null,
   };
 
-  handleChange = e => {
-    this.setState({ [e.target.name]: e.target.value });
-  };
+    handleChange = e => {
+      this.setState({ [e.target.name]: e.target.value });
+    };
 
-  handleSubmit = e => {
+    handleSubmit = e => {
     e.preventDefault();
     this.setState({ isProcessing: true });
 
-    const { api, setUser, location } = this.props;
+    const { api, setUser, location, navigate } = this.props;
     const { email, password } = this.state;
 
     let role = null;
-
     const path = location.pathname.toLowerCase();
 
-    if (path.includes('admin')) {
-      role = ROLES.ADMIN;
-    }
-    else if (path.includes('company')) {
-      role = ROLES.COMPANY;
-    } 
-    else if (path.includes('student')) {
-      role = ROLES.STUDENT;
-      }
+    if (path.includes('admin')) role = ROLES.ADMIN;
+    else if (path.includes('company')) role = ROLES.COMPANY;
+    else if (path.includes('student')) role = ROLES.STUDENT;
 
     api
       .logIn(role, { email, password })
@@ -48,20 +41,29 @@ class LogInContainer extends Component {
 
         localStorage.setItem('token', token);
         setUser({ user });
+
+        // ✅ Redirect user based on role
+        if (role === ROLES.ADMIN) navigate('/admin/dashboard');
+        else if (role === ROLES.COMPANY) navigate('/company/dashboard');
+        else if (role === ROLES.STUDENT) navigate('/student/dashboard');
       })
-      .catch(error =>
+      .catch(error =>{
+        console.log('Login error:', error.response?.data || error.message);
         this.setState({
           isProcessing: false,
-          error: error.response.data.message,
+          error:
+            error?.response?.data?.message ||
+            error?.response?.data?.error ||
+            'Login failed',
         })
-      );
-  };
+      });
+    };
 
   dismissAlert = () => this.setState({ error: null });
 
   render() {
     const { email, password, isProcessing, error } = this.state;
-
+    
     return (
       <LogIn
         email={email}

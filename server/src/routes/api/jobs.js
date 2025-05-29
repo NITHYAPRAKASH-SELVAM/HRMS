@@ -201,28 +201,30 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
     if (role === COMPANY && job._companyId.toString() !== _id.toString())
       return res.status(403).json({ success: false, message: 'Access denied' });
 
-    const jobDesc = job.description?.trim();
-    if (!jobDesc) return res.status(400).json({ success: false, message: 'Job description missing' });
-
     const applicants = job.applicants
       .filter(a => a.studentId)
-      .map(a => ({ student: a.studentId, status: a.status || 'pending', appliedAt: a.appliedAt || null }));
+      .map(a => ({
+        studentId: String(a.studentId._id || a.studentId),
+        student: a.studentId,
+        status: a.status || 'pending',
+        appliedAt: a.appliedAt || null,
+      }));
 
     if (applicants.length === 0) return res.status(200).json({ success: true, data: [] });
 
-    const rankedScores = await rankApplicants(applicants.map(a => a.student), jobDesc);
+    // 🔁 Updated: call Flask API using only jobId
+    const rankedScores = await rankApplicants(req.params.id);
 
+    // 🧠 Match ranked scores to student profiles
     const rankedApplicants = rankedScores.map(({ studentId, score }) => {
-        const meta = applicants.find(a => a.student._id.toString() === String(studentId));
-        return { 
-          applicant: meta?.student || null, 
-          score, 
-          status: meta?.status, 
-          appliedAt: meta?.appliedAt 
-         };
-        }).filter(r => r.applicant) // optional, filters out any unmatched
-          .sort((a, b) => b.score - a.score);
-
+      const match = applicants.find(a => a.studentId === studentId);
+      return {
+        applicant: match?.student || null,
+        score,
+        status: match?.status,
+        appliedAt: match?.appliedAt,
+      };
+    }).filter(r => r.applicant).sort((a, b) => b.score - a.score);
 
     res.status(200).json({ success: true, data: rankedApplicants });
 
@@ -231,6 +233,7 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal Server Error during ranking' });
   }
 });
+
 // GET screening result for an applicant under a job
 router.get('/:jobId/:studentId', authorization, async (req, res) => {
   const { _id, role } = req.user;

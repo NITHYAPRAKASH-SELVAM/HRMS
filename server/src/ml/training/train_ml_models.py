@@ -1,11 +1,15 @@
 import pickle
 import numpy as np
+import random
+import os
+import sys
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRanker
-import random
-import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from features_rank import extract_features_for_rank
+
 
 # ---------- Constants ----------
 MODEL_DIR = 'server/src/ml/model_data'
@@ -37,7 +41,7 @@ def extract_text(profile):
         " ".join(proj.get('description', '') for proj in profile.get('projects', []))
     ])
 
-# ---------- Feature Extraction (6 features) ----------
+# ---------- Screening Feature Extraction ----------
 def extract_features(profile, job_description, tfidf):
     exp_years = profile.get('experience_years', 0)
     edu_level = EDU_MAP.get(profile.get('education_level', 'bachelor'), 0)
@@ -60,46 +64,62 @@ def extract_features(profile, job_description, tfidf):
         total_experiences
     ])
 
-# ---------- Main Training Script ----------
+# ---------- Main Training ----------
 def main():
     print("🚀 Generating mock data...")
     mock_profiles = generate_mock_profiles()
-    job_description = "Looking for a backend engineer skilled in ML and Python."
+    job_description_str = "Looking for a backend engineer skilled in ML and Python."
+    job_description_dict = {"role": "backend engineer", "skills": ["ML", "Python"]}
 
-    print("📊 Fitting TF-IDF vectorizer...")
-    texts = [extract_text(p) for p in mock_profiles] + [job_description]
-    tfidf = TfidfVectorizer(max_features=MAX_TFIDF_FEATURES)
-    tfidf.fit(texts)
+    # ---------- Screening TF-IDF ----------
+    print("📊 Fitting screening TF-IDF vectorizer...")
+    texts_screen = [extract_text(p) for p in mock_profiles] + [job_description_str]
+    tfidf_screen = TfidfVectorizer(max_features=MAX_TFIDF_FEATURES)
+    tfidf_screen.fit(texts_screen)
 
-    print("🔍 Extracting features...")
-    X = np.array([extract_features(p, job_description, tfidf) for p in mock_profiles])
+    print("🔍 Extracting screening features...")
+    X_screen = np.array([extract_features(p, job_description_str, tfidf_screen) for p in mock_profiles])
     y = np.array([1 if p['experience_years'] > 2 else 0 for p in mock_profiles])
 
-    print("📏 Scaling features...")
+    print("📏 Scaling screening features...")
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    X_scaled = scaler.fit_transform(X_screen)
 
     print("🤖 Training Logistic Regression...")
     log_model = LogisticRegression()
     log_model.fit(X_scaled, y)
 
-    print("📈 Training XGBoost Ranker...")
-    group = [len(X_scaled)]  # One group for all
-    rank_model = XGBRanker(objective='rank:pairwise', n_estimators=20)
-    rank_model.fit(X_scaled, y, group=group)
+    # ---------- Ranking TF-IDF ----------
+    print("📊 Fitting ranking TF-IDF vectorizer...")
+    texts_rank = [extract_text(p) for p in mock_profiles]
+    tfidf_rank = TfidfVectorizer(max_features=MAX_TFIDF_FEATURES)
+    tfidf_rank.fit(texts_rank)
 
+    print("🔍 Extracting ranking features...")
+    X_rank = np.array([
+        extract_features_for_rank(p, job_description_dict, tfidf_rank) for p in mock_profiles
+    ])
+
+    print("📈 Training XGBoost Ranker...")
+    group = [len(X_rank)]  # Single group
+    rank_model = XGBRanker(objective='rank:pairwise', n_estimators=20)
+    rank_model.fit(X_rank, y, group=group)
+
+    # ---------- Save Everything ----------
     print("💾 Saving models...")
     os.makedirs(MODEL_DIR, exist_ok=True)
     with open(f'{MODEL_DIR}/tfidf_vectorizer.pkl', 'wb') as f:
-        pickle.dump(tfidf, f)
+        pickle.dump(tfidf_screen, f)
     with open(f'{MODEL_DIR}/feature_scaler.pkl', 'wb') as f:
         pickle.dump(scaler, f)
     with open(f'{MODEL_DIR}/logistic_model.pkl', 'wb') as f:
         pickle.dump(log_model, f)
+    with open(f'{MODEL_DIR}/tfidf_rank.pkl', 'wb') as f:
+        pickle.dump(tfidf_rank, f)
     with open(f'{MODEL_DIR}/ltr_model.pkl', 'wb') as f:
         pickle.dump(rank_model, f)
 
-    print("✅ Training complete! Models saved to:", MODEL_DIR)
+    print("✅ Training complete! All models saved to:", MODEL_DIR)
 
 if __name__ == '__main__':
     main()
