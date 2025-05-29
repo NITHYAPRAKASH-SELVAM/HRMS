@@ -32,4 +32,4 @@ function rankApplicantsByJobId(jobId) {
   });
 }
 
-module.exports = { rankApplicantsByJobId };
+module.exports = { rankApplicants: rankApplicantsByJobId, };
