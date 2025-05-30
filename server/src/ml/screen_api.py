@@ -68,23 +68,23 @@ def predict_fit_api():
         app.logger.debug(f"Received request data: {data}")
 
         student_id = data.get("profile")
-        job_id = data.get("job_description")
+        job_description_text = data.get("job_description")
 
-        if not student_id or not job_id:
-            return jsonify({"error": "Both 'profile' and 'job_description' are required"}), 400
+        if not student_id or not job_description_text:
+            return jsonify({"error": "Both 'profile' (student_id) and 'job_description' (text) are required"}), 400
 
+        # Fetch student profile from DB
         student = fetch_document_by_id(students_collection, student_id)
-        job = fetch_document_by_id(jobs_collection, job_id)
 
         if not student:
             return jsonify({"error": f"Student with ID '{student_id}' not found"}), 404
-        if not job:
-            return jsonify({"error": f"Job with ID '{job_id}' not found"}), 404
 
-        fit_score = predict_fit(student, job)
-        app.logger.info(f"Predicted fit score for student {student_id} and job {job_id}: {fit_score}")
+        # Call ML predict_fit with student profile and job description text
+        fit_score = predict_fit(student, job_description_text)
+        is_fit = bool(fit_score >= 0.6)  # Threshold example
+        app.logger.info(f"Predicted fit score for student {student_id}: {fit_score}")
 
-        return jsonify({"fit_score": fit_score}), 200
+        return jsonify({"fit_score": fit_score, "fit": is_fit}), 200
 
     except Exception as e:
         app.logger.exception("Unhandled exception in /predict-fit")

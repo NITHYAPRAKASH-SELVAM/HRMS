@@ -20,10 +20,11 @@ def load_model():
             _model = pickle.load(f)
     return _model
 
-def predict_fit(profile, job_description):
-    if not profile or not job_description:
+def predict_fit(profile, job_description_text):
+    if not profile or not job_description_text:
         raise ValueError("Profile and job description must be provided")
     model = load_model()
-    features = extract_features(profile, job_description)
+    features = extract_features(profile, job_description_text)  # pass text, not dict
     prob = model.predict_proba([features])[0][1]
     return prob
+

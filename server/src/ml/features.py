@@ -6,12 +6,12 @@ import pickle
 
 def load_vectorizer(path=None):
     if path is None:
-        base_dir = os.path.dirname(os.path.abspath(__file__))  # directory of features.py
+        base_dir = os.path.dirname(os.path.abspath(__file__))
         path = os.path.join(base_dir, "model_data", "tfidf_vectorizer.pkl")
     with open(path, 'rb') as f:
         return pickle.load(f)
 
-def extract_features(profile, job_description, vectorizer=None):
+def extract_features(profile, job_description_text, vectorizer=None):
     # Structured features
     experience = min(max(profile.get('experience_years', 0), 0), 50) / 50.0
     education_level = profile.get('education_level', 'bachelor').lower()
@@ -26,18 +26,15 @@ def extract_features(profile, job_description, vectorizer=None):
     # Resume text
     resume_text = " ".join([
         profile.get('summary', ''),
-        " ".join(skills),
+        " ".join(profile.get('skills', [])),
         " ".join([exp.get('description', '') for exp in profile.get('experiences', []) if exp]),
         " ".join([proj.get('description', '') for proj in profile.get('projects', []) if proj])
     ])
     if not resume_text.strip():
         resume_text = "N/A"
-    job_text = " ".join([
-        job_description.get('title', ''),
-        job_description.get('description', '')
-    ]).strip()
-    if not job_text:
-        job_text = "N/A"
+
+    job_text = job_description_text.strip() if job_description_text else "N/A"
+
     # TF-IDF similarity
     if vectorizer is None:
         vectorizer = load_vectorizer()
@@ -54,4 +51,3 @@ def extract_features(profile, job_description, vectorizer=None):
         num_projects,
         num_certifications
     ])
-

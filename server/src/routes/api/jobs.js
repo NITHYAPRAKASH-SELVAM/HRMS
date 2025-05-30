@@ -215,7 +215,6 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
     let rankedScores;
 
     try {
-      // Use the wrapper function instead of direct axios call
       rankedScores = await rankApplicants(req.params.id);
 
       if (!Array.isArray(rankedScores) || !rankedScores.every(r => r.studentId && typeof r.score === 'number')) {
@@ -224,12 +223,12 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
     } catch (error) {
       console.error("❌ Flask rank API failed:", error.message);
 
-      // Fallback: use screenApplicant() for each applicant to get fit_score
       const jobDescription = job.description || "";
 
       const scoredApplicants = await Promise.all(applicants.map(async (applicant) => {
         try {
-          const fit_score = await screenApplicant(applicant.student, jobDescription);
+          // Pass studentId string and job description text
+          const { fit_score } = await screenApplicant(applicant.studentId, jobDescription);
           return {
             studentId: applicant.studentId,
             score: fit_score,
@@ -246,7 +245,6 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
       rankedScores = scoredApplicants.filter(Boolean).sort((a, b) => b.score - a.score);
     }
 
-    // Match ranked scores to profiles if needed
     if (!rankedScores[0]?.applicant) {
       const rankedApplicants = rankedScores.map(({ studentId, score }) => {
         const match = applicants.find(a => a.studentId === studentId);
@@ -268,7 +266,6 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
     return res.status(500).json({ success: false, message: 'Internal Server Error during ranking' });
   }
 });
-// GET screening result for an applicant under a job
 router.get('/:jobId/:studentId', authorization, async (req, res) => {
   const { _id, role } = req.user;
   const { jobId, studentId } = req.params;
@@ -278,14 +275,18 @@ router.get('/:jobId/:studentId', authorization, async (req, res) => {
     if (!job) return res.status(404).json({ message: 'Job not found' });
     if (role === COMPANY && job._companyId.toString() !== _id.toString())
       return res.status(403).json({ message: 'Access denied' });
+
+    const jobDescription = job.description || "";
+
     console.log(`🔍 Screening student ${studentId} for job ${jobId} by user ${_id}`);
 
-    const isFit = await screenApplicant(studentId, jobId);
-    return res.status(200).json({ fit: isFit });
+    const { fit, fit_score } = await screenApplicant(studentId, jobDescription);
+    return res.status(200).json({ fit, fit_score });
   } catch (err) {
     console.error(`❌ Screening error for ${studentId} in job ${jobId}:`, err);
     return res.status(500).json({ message: 'Screening failed.' });
   }
 });
+
 
 module.exports = router;
