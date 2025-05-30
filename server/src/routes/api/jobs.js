@@ -212,28 +212,62 @@ router.get('/:id/ranked-applicants', authorization, async (req, res) => {
 
     if (applicants.length === 0) return res.status(200).json({ success: true, data: [] });
 
-    // 🔁 Updated: call Flask API using only jobId
-    const rankedScores = await rankApplicants(req.params.id);
+    let rankedScores;
 
-    // 🧠 Match ranked scores to student profiles
-    const rankedApplicants = rankedScores.map(({ studentId, score }) => {
-      const match = applicants.find(a => a.studentId === studentId);
-      return {
-        applicant: match?.student || null,
-        score,
-        status: match?.status,
-        appliedAt: match?.appliedAt,
-      };
-    }).filter(r => r.applicant).sort((a, b) => b.score - a.score);
+    try {
+      // Use the wrapper function instead of direct axios call
+      rankedScores = await rankApplicants(req.params.id);
 
-    res.status(200).json({ success: true, data: rankedApplicants });
+      if (!Array.isArray(rankedScores) || !rankedScores.every(r => r.studentId && typeof r.score === 'number')) {
+        throw new Error('Invalid response format from Flask rank API');
+      }
+    } catch (error) {
+      console.error("❌ Flask rank API failed:", error.message);
+
+      // Fallback: use screenApplicant() for each applicant to get fit_score
+      const jobDescription = job.description || "";
+
+      const scoredApplicants = await Promise.all(applicants.map(async (applicant) => {
+        try {
+          const fit_score = await screenApplicant(applicant.student, jobDescription);
+          return {
+            studentId: applicant.studentId,
+            score: fit_score,
+            status: applicant.status,
+            appliedAt: applicant.appliedAt,
+            applicant: applicant.student,
+          };
+        } catch (screenErr) {
+          console.error(`❌ Screening failed for student ${applicant.studentId}:`, screenErr.message);
+          return null;
+        }
+      }));
+
+      rankedScores = scoredApplicants.filter(Boolean).sort((a, b) => b.score - a.score);
+    }
+
+    // Match ranked scores to profiles if needed
+    if (!rankedScores[0]?.applicant) {
+      const rankedApplicants = rankedScores.map(({ studentId, score }) => {
+        const match = applicants.find(a => a.studentId === studentId);
+        return {
+          applicant: match?.student || null,
+          score,
+          status: match?.status,
+          appliedAt: match?.appliedAt,
+        };
+      }).filter(r => r.applicant).sort((a, b) => b.score - a.score);
+
+      return res.status(200).json({ success: true, data: rankedApplicants });
+    } else {
+      return res.status(200).json({ success: true, data: rankedScores });
+    }
 
   } catch (err) {
     console.error('❌ Ranking fetch failed:', err.message || err);
-    res.status(500).json({ success: false, message: 'Internal Server Error during ranking' });
+    return res.status(500).json({ success: false, message: 'Internal Server Error during ranking' });
   }
 });
-
 // GET screening result for an applicant under a job
 router.get('/:jobId/:studentId', authorization, async (req, res) => {
   const { _id, role } = req.user;

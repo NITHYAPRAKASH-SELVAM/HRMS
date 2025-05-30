@@ -12,9 +12,8 @@ class JobsContainer extends Component {
     filterStatus: '',
     openJobIndex: null,
     applicantsByJobId: {},
-    screeningResults: {}, // new addition
-    rankedApplicants: {}, // new addition
- // store applicants and scores per job here
+    screeningResults: {},
+    rankedApplicants: {},
   };
 
   componentDidMount() {
@@ -41,9 +40,9 @@ class JobsContainer extends Component {
   fetchApplicantsForJob = async (job) => {
     const { api } = this.props;
     const jobId = job._id;
-    
+
     if (!job.applicants || job.applicants.length === 0) {
-      this.setState(state => ({
+      this.setState((state) => ({
         applicantsByJobId: {
           ...state.applicantsByJobId,
           [jobId]: [],
@@ -53,12 +52,11 @@ class JobsContainer extends Component {
     }
 
     try {
-      // Fetch ranked applicants scores
+      // Try LTR ranking first
       const { data: rankingData } = await api.getRankedApplicants(jobId);
       const scores = rankingData?.scores || {};
-      console.log(`Fetched scores for job ${jobId}:`, scores);
+      console.log(`Fetched LTR scores for job ${jobId}:`, scores);
 
-      // Fetch full profiles for applicants
       const populatedApplicants = await Promise.all(
         job.applicants.map(async (applicant) => {
           const rawStudentId = this.normalizeStudentId(applicant.studentId);
@@ -79,20 +77,57 @@ class JobsContainer extends Component {
         })
       );
 
-      this.setState(state => ({
+      this.setState((state) => ({
         applicantsByJobId: {
           ...state.applicantsByJobId,
           [jobId]: populatedApplicants.filter(Boolean),
         },
       }));
     } catch (err) {
-      console.warn(`Ranking or applicants fetch failed for job ${jobId}:`, err.message);
-      this.setState(state => ({
-        applicantsByJobId: {
-          ...state.applicantsByJobId,
-          [jobId]: job.applicants, // fallback, raw applicants without profiles/scores
-        },
-      }));
+      console.warn(`LTR ranking failed for job ${jobId}:`, err.message);
+      // fallback: use screening (logistic regression) instead
+      try {
+        const { data: screenData } = await api.getScreenedApplicants(jobId);
+        const scoreMap = {};
+        screenData.forEach(({ studentId, fit_score }) => {
+          scoreMap[this.normalizeStudentId(studentId)] = fit_score;
+        });
+
+        const fallbackApplicants = await Promise.all(
+          job.applicants.map(async (applicant) => {
+            const rawStudentId = this.normalizeStudentId(applicant.studentId);
+            if (!rawStudentId) return null;
+
+            try {
+              const { data: profile } = await api.getProfileById(rawStudentId);
+              return {
+                ...profile,
+                studentId: rawStudentId,
+                status: applicant.status,
+                score: scoreMap[rawStudentId] ?? null,
+              };
+            } catch (err) {
+              console.error(`Fallback profile fetch failed for ${rawStudentId}:`, err.message);
+              return null;
+            }
+          })
+        );
+
+        this.setState((state) => ({
+          applicantsByJobId: {
+            ...state.applicantsByJobId,
+            [jobId]: fallbackApplicants.filter(Boolean),
+          },
+        }));
+      } catch (fallbackErr) {
+        console.error(`Full fallback failed for job ${jobId}:`, fallbackErr.message);
+        this.setState((state) => ({
+          applicantsByJobId: {
+            ...state.applicantsByJobId,
+            [jobId]: [],
+          },
+        }));
+      }
     }
   };
 
@@ -104,15 +139,12 @@ class JobsContainer extends Component {
       const job = jobs[newIndex];
       const jobId = job._id;
 
-      // Fetch applicants if not already done
       if (!applicantsByJobId[jobId]) {
         await this.fetchApplicantsForJob(job);
       }
 
-      // Re-fetch applicants just in case
       const applicants = this.state.applicantsByJobId[jobId] || [];
 
-      // Fetch screening status for each applicant
       const screeningMap = {};
       await Promise.all(
         applicants.map(async (applicant) => {
@@ -142,18 +174,16 @@ class JobsContainer extends Component {
       this.setState({ openJobIndex: null });
     }
   };
-  
-    renderFitBadge = (jobId, studentId) => {
+
+  renderFitBadge = (jobId, studentId) => {
     const key = `${jobId}_${studentId}`;
     const isFit = this.state.screeningResults[key];
     console.log("Screening result (fit score):", isFit);
-
 
     if (isFit === true) return <span className="badge bg-success ms-2">Fit</span>;
     if (isFit === false) return <span className="badge bg-secondary ms-2">Unfit</span>;
     return <span className="badge bg-warning ms-2">Checking...</span>;
   };
-
 
   handleDelete = async (e) => {
     const { api } = this.props;
@@ -165,8 +195,7 @@ class JobsContainer extends Component {
       await api.deleteJob(jobId);
       await this.loadJobs();
 
-      // Also remove cached applicants for deleted job
-      this.setState(state => {
+      this.setState((state) => {
         const newApplicants = { ...state.applicantsByJobId };
         delete newApplicants[jobId];
         return { applicantsByJobId: newApplicants };
@@ -182,8 +211,7 @@ class JobsContainer extends Component {
     const { api } = this.props;
     try {
       await api.updateApplicantStatus(jobId, studentId, status);
-      // Refresh applicants data for this job after update
-      const job = this.state.jobs.find(j => j._id === jobId);
+      const job = this.state.jobs.find((j) => j._id === jobId);
       if (job) await this.fetchApplicantsForJob(job);
     } catch (error) {
       console.error(`Status update failed:`, error.message);
@@ -208,8 +236,7 @@ class JobsContainer extends Component {
       applicantsByJobId,
     } = this.state;
 
-    // Pass applicants for the open job only
-    const jobsWithApplicants = jobs.map(job => ({
+    const jobsWithApplicants = jobs.map((job) => ({
       ...job,
       applicants: applicantsByJobId[job._id] || [],
     }));
@@ -228,8 +255,7 @@ class JobsContainer extends Component {
         openJobIndex={openJobIndex}
         renderFitBadge={this.renderFitBadge}
         screeningResults={this.state.screeningResults}
-        rankedApplicants={applicantsByJobId}  // or define a separate rankedApplicants if you prefer
-        
+        rankedApplicants={applicantsByJobId}
       />
     );
   }
